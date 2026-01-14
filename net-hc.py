@@ -225,6 +225,7 @@ def send_email_report(recipient_email, ip, scan_results):
         # Force IPv4 connection to avoid [Errno 101] Network is unreachable on some cloud providers
         # Create a custom connection to port 587
         import socket
+        
         try:
             # Resolve IPv4 specifically
             addr_info = socket.getaddrinfo(SMTP_SERVER, SMTP_PORT, socket.AF_INET, socket.SOCK_STREAM)
