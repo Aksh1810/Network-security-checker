@@ -1,0 +1,148 @@
+Starting Nmap 7.98 ( https://nmap.org ) at 2026-01-14 12:28 -0600
+Nmap scan report for 142.3.85.55
+Host is up (0.000059s latency).
+Not shown: 998 closed tcp ports (conn-refused)
+PORT     STATE SERVICE VERSION
+5000/tcp open  rtsp
+| fingerprint-strings: 
+|   FourOhFourRequest: 
+|     HTTP/1.1 403 Forbidden
+|     Content-Length: 0
+|     Server: AirTunes/920.10.1
+|     X-Apple-ProcessingTime: 3
+|     X-Apple-RequestReceivedTimestamp: 432721391
+|   GetRequest: 
+|     HTTP/1.1 403 Forbidden
+|     Content-Length: 0
+|     Server: AirTunes/920.10.1
+|     X-Apple-ProcessingTime: 3
+|     X-Apple-RequestReceivedTimestamp: 432716323
+|   HTTPOptions: 
+|     HTTP/1.1 403 Forbidden
+|     Content-Length: 0
+|     Server: AirTunes/920.10.1
+|     X-Apple-ProcessingTime: 3
+|     X-Apple-RequestReceivedTimestamp: 432721381
+|   RTSPRequest: 
+|     RTSP/1.0 403 Forbidden
+|     Content-Length: 0
+|     Server: AirTunes/920.10.1
+|     X-Apple-ProcessingTime: 5
+|     X-Apple-RequestReceivedTimestamp: 432716380
+|   SIPOptions: 
+|     RTSP/1.0 403 Forbidden
+|     Content-Length: 0
+|     Server: AirTunes/920.10.1
+|     CSeq: 42 OPTIONS
+|     X-Apple-ProcessingTime: 2
+|_    X-Apple-RequestReceivedTimestamp: 432721401
+7000/tcp open  rtsp
+| fingerprint-strings: 
+|   FourOhFourRequest: 
+|     HTTP/1.1 403 Forbidden
+|     Content-Length: 0
+|     Server: AirTunes/920.10.1
+|     X-Apple-ProcessingTime: 2
+|     X-Apple-RequestReceivedTimestamp: 432721345
+|   GetRequest: 
+|     HTTP/1.1 403 Forbidden
+|     Content-Length: 0
+|     Server: AirTunes/920.10.1
+|     X-Apple-ProcessingTime: 3
+|     X-Apple-RequestReceivedTimestamp: 432721323
+|   HTTPOptions: 
+|     HTTP/1.1 403 Forbidden
+|     Content-Length: 0
+|     Server: AirTunes/920.10.1
+|     X-Apple-ProcessingTime: 3
+|     X-Apple-RequestReceivedTimestamp: 432721338
+|   RTSPRequest: 
+|     RTSP/1.0 403 Forbidden
+|     Content-Length: 0
+|     Server: AirTunes/920.10.1
+|     X-Apple-ProcessingTime: 3
+|     X-Apple-RequestReceivedTimestamp: 432716318
+|   SIPOptions: 
+|     RTSP/1.0 403 Forbidden
+|     Content-Length: 0
+|     Server: AirTunes/920.10.1
+|     CSeq: 42 OPTIONS
+|     X-Apple-ProcessingTime: 4
+|_    X-Apple-RequestReceivedTimestamp: 432721352
+2 services unrecognized despite returning data. If you know the service/version, please submit the following fingerprints at https://nmap.org/cgi-bin/submit.cgi?new-service :
+==============NEXT SERVICE FINGERPRINT (SUBMIT INDIVIDUALLY)==============
+SF-Port5000-TCP:V=7.98%I=7%D=1/14%Time=6967E057%P=arm-apple-darwin24.4.0%r
+SF:(GetRequest,90,"HTTP/1\.1\x20403\x20Forbidden\r\nContent-Length:\x200\r
+SF:\nServer:\x20AirTunes/920\.10\.1\r\nX-Apple-ProcessingTime:\x203\r\nX-A
+SF:pple-RequestReceivedTimestamp:\x20432716323\r\n\r\n")%r(RTSPRequest,90,
+SF:"RTSP/1\.0\x20403\x20Forbidden\r\nContent-Length:\x200\r\nServer:\x20Ai
+SF:rTunes/920\.10\.1\r\nX-Apple-ProcessingTime:\x205\r\nX-Apple-RequestRec
+SF:eivedTimestamp:\x20432716380\r\n\r\n")%r(HTTPOptions,90,"HTTP/1\.1\x204
+SF:03\x20Forbidden\r\nContent-Length:\x200\r\nServer:\x20AirTunes/920\.10\
+SF:.1\r\nX-Apple-ProcessingTime:\x203\r\nX-Apple-RequestReceivedTimestamp:
+SF:\x20432721381\r\n\r\n")%r(FourOhFourRequest,90,"HTTP/1\.1\x20403\x20For
+SF:bidden\r\nContent-Length:\x200\r\nServer:\x20AirTunes/920\.10\.1\r\nX-A
+SF:pple-ProcessingTime:\x203\r\nX-Apple-RequestReceivedTimestamp:\x2043272
+SF:1391\r\n\r\n")%r(SIPOptions,A2,"RTSP/1\.0\x20403\x20Forbidden\r\nConten
+SF:t-Length:\x200\r\nServer:\x20AirTunes/920\.10\.1\r\nCSeq:\x2042\x20OPTI
+SF:ONS\r\nX-Apple-ProcessingTime:\x202\r\nX-Apple-RequestReceivedTimestamp
+SF::\x20432721401\r\n\r\n");
+==============NEXT SERVICE FINGERPRINT (SUBMIT INDIVIDUALLY)==============
+SF-Port7000-TCP:V=7.98%I=7%D=1/14%Time=6967E05C%P=arm-apple-darwin24.4.0%r
+SF:(RTSPRequest,90,"RTSP/1\.0\x20403\x20Forbidden\r\nContent-Length:\x200\
+SF:r\nServer:\x20AirTunes/920\.10\.1\r\nX-Apple-ProcessingTime:\x203\r\nX-
+SF:Apple-RequestReceivedTimestamp:\x20432716318\r\n\r\n")%r(GetRequest,90,
+SF:"HTTP/1\.1\x20403\x20Forbidden\r\nContent-Length:\x200\r\nServer:\x20Ai
+SF:rTunes/920\.10\.1\r\nX-Apple-ProcessingTime:\x203\r\nX-Apple-RequestRec
+SF:eivedTimestamp:\x20432721323\r\n\r\n")%r(HTTPOptions,90,"HTTP/1\.1\x204
+SF:03\x20Forbidden\r\nContent-Length:\x200\r\nServer:\x20AirTunes/920\.10\
+SF:.1\r\nX-Apple-ProcessingTime:\x203\r\nX-Apple-RequestReceivedTimestamp:
+SF:\x20432721338\r\n\r\n")%r(FourOhFourRequest,90,"HTTP/1\.1\x20403\x20For
+SF:bidden\r\nContent-Length:\x200\r\nServer:\x20AirTunes/920\.10\.1\r\nX-A
+SF:pple-ProcessingTime:\x202\r\nX-Apple-RequestReceivedTimestamp:\x2043272
+SF:1345\r\n\r\n")%r(SIPOptions,A2,"RTSP/1\.0\x20403\x20Forbidden\r\nConten
+SF:t-Length:\x200\r\nServer:\x20AirTunes/920\.10\.1\r\nCSeq:\x2042\x20OPTI
+SF:ONS\r\nX-Apple-ProcessingTime:\x204\r\nX-Apple-RequestReceivedTimestamp
+SF::\x20432721352\r\n\r\n");
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 34.55 seconds
+
+
+
+==================================================================
+              SIMPLE NETWORK HEALTH REPORT
+==================================================================
+
+Target: 142.3.85.55
+Scan Date: Wed Jan 14 12:28:59 CST 2026
+
+SUMMARY
+-------
+We analyzed your network device at 142.3.85.55.
+
+[!] ATTENTION: We found 2 accessible service(s) on this device.
+    Think of these as unlocked doors that outsiders could potentially knock on.
+
+WHAT WE FOUND
+-------------
+• Port 5000/tcp is OPEN running 'rtsp'.
+  -> This is often used for streaming media (like AirPlay or security cameras).
+• Port 7000/tcp is OPEN running 'rtsp'.
+  -> This is often used for streaming media (like AirPlay or security cameras).
+
+
+SECURITY RISKS
+--------------
+[+] Our automated check did not detect any obvious specific vulnerabilities.
+    (However, always keep your software up to date!)
+
+------------------------------------------------------------------
+Next Steps:
+1. If you recognize these services (e.g., a web server you set up), ensure they are password protected.
+2. If you do not need a service, consider turning it off or blocking the port.
+3. Keep the device's software updated to prevent hackers from using old bugs.
+------------------------------------------------------------------
+    (Technical details are attached below for your IT support)
+==================================================================
+    
