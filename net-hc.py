@@ -223,34 +223,26 @@ def send_email_report(recipient_email, ip, scan_results):
     context = ssl.create_default_context()
 
     try:
-        # Force IPv4 connection
-        # Resolve IPv4 specifically
-        addr_info = socket.getaddrinfo(SMTP_SERVER, SMTP_PORT, socket.AF_INET, socket.SOCK_STREAM)
-        family, socktype, proto, canonname, sockaddr = addr_info[0]
+        # Connect to Gmail SMTP
+        # Note: We use a standard connection first. If you face issues, we can force IPv4 via patching getaddrinfo, 
+        # but usually allowing the system to handle it with a proper timeout is safer.
         
-        # Manually connect
-        s = socket.socket(family, socktype, proto)
-        s.connect(sockaddr)
-        
-        # Pass this socket to smtplib
-        server = smtplib.SMTP(host=SMTP_SERVER, port=SMTP_PORT)
-        server.sock = s
-        server.file = s.makefile('rb')
-        server.get_reply() # Read initial greeting from server
+        # NOTE: If Render is blocking port 587, we might need 465. But let's try standard 587 with robust error handling.
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.ehlo()
-
-        # Proceed with TLS and Login
-        with server:
-            server.starttls(context=context)
-            server.login(sender_email, sender_password)
-            server.send_message(msg)
+        server.starttls(context=context)
+        server.ehlo()
         
-        print("[+] Email sent via SMTP (IPv4).")
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+        server.quit()
+        
+        print("[+] Email sent via SMTP.")
         logging.info(f"Email successfully sent to {recipient_email}")
         return True, "Email sent successfully!"
         
     except Exception as e:
-        error_msg = f"SMTP Failed: {str(e)}"
+        error_msg = f"SMTP Connection Encountered Error: {str(e)}"
         print(f"[-] {error_msg}")
         logging.error(error_msg)
         return False, error_msg
