@@ -249,42 +249,55 @@ def send_email_report(recipient_email, ip, scan_results):
             print(f"[!] Diagnostics Failed: {diag_err}")
         print("----------------------------------")
 
-        # Attempt 1: Try Port 465 (SSL) - Preferred for Cloud/Container
+        # Attempt 1: Try Port 465 (SSL)
         try:
             print(f"[*] Attempting connection to {SMTP_SERVER}:465 (SSL)...")
-            server = smtplib.SMTP_SSL(SMTP_SERVER, 465, context=context, timeout=20)
+            server = smtplib.SMTP_SSL(SMTP_SERVER, 465, context=context, timeout=8)
             server.login(sender_email, sender_password)
             server.send_message(msg)
             server.quit()
             
             print("[+] Email sent via Port 465.")
             logging.info(f"Email successfully sent to {recipient_email} via Port 465")
-            # Restore patch
             socket.getaddrinfo = original_getaddrinfo
             return True, "Email sent successfully via Port 465!"
-            
         except Exception as e1:
             print(f"[-] Port 465 failed: {e1}")
             
-            # Attempt 2: Try Port 587 (STARTTLS) - Fallback
+            # Attempt 2: Try Port 587 (STARTTLS)
             try:
                 print(f"[*] Attempting connection to {SMTP_SERVER}:587 (STARTTLS)...")
-                server = smtplib.SMTP(SMTP_SERVER, 587, timeout=20)
+                server = smtplib.SMTP(SMTP_SERVER, 587, timeout=8)
                 server.ehlo()
                 server.starttls(context=context)
                 server.ehlo()
                 server.login(sender_email, sender_password)
                 server.send_message(msg)
                 server.quit()
-                
                 print("[+] Email sent via Port 587.")
                 logging.info(f"Email successfully sent to {recipient_email} via Port 587")
-                # Restore patch
                 socket.getaddrinfo = original_getaddrinfo
                 return True, "Email sent successfully via Port 587!"
-                
             except Exception as e2:
-                raise e2 # Escalate to outer block
+                print(f"[-] Port 587 failed: {e2}")
+
+                # Attempt 3: Try Port 2525 (STARTTLS) - The "Hail Mary"
+                try:
+                    print(f"[*] Attempting connection to {SMTP_SERVER}:2525 (STARTTLS)...")
+                    server = smtplib.SMTP(SMTP_SERVER, 2525, timeout=8)
+                    server.ehlo()
+                    server.starttls(context=context)
+                    server.ehlo()
+                    server.login(sender_email, sender_password)
+                    server.send_message(msg)
+                    server.quit()
+                    print("[+] Email sent via Port 2525.")
+                    logging.info(f"Email successfully sent to {recipient_email} via Port 2525")
+                    socket.getaddrinfo = original_getaddrinfo
+                    return True, "Email sent successfully via Port 2525!"
+                except Exception as e3:
+                     # All failed
+                    raise e3
 
     except Exception as e:
         # Restore patch in case of failure
