@@ -225,7 +225,8 @@ def send_email_report(recipient_email, ip, scan_results):
     # Attempt 1: Try Port 587 (STARTTLS)
     try:
         print(f"[*] Attempting connection to {SMTP_SERVER}:587 (STARTTLS)...")
-        server = smtplib.SMTP(SMTP_SERVER, 587)
+        # Add timeout to avoid Gunicorn worker kill
+        server = smtplib.SMTP(SMTP_SERVER, 587, timeout=10)
         server.ehlo()
         server.starttls(context=context)
         server.ehlo()
@@ -242,7 +243,7 @@ def send_email_report(recipient_email, ip, scan_results):
         # Attempt 2: Try Port 465 (SSL) - Fallback for "Network Unreachable"
         try:
             print(f"[*] Attempting connection to {SMTP_SERVER}:465 (SSL)...")
-            server = smtplib.SMTP_SSL(SMTP_SERVER, 465, context=context)
+            server = smtplib.SMTP_SSL(SMTP_SERVER, 465, context=context, timeout=10)
             server.login(sender_email, sender_password)
             server.send_message(msg)
             server.quit()
