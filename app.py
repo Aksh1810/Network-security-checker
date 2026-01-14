@@ -55,7 +55,6 @@ def run_async_scan(ip, email):
         print("Background task: Finished and emailed.")
         
     except Exception as e:
-    except Exception as e:
         import traceback
         traceback.print_exc()
         print(f"Error in background task: {e}")
