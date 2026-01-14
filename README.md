@@ -74,3 +74,17 @@ This project is ready for Docker-based deployment (e.g., on Render):
    - `SENDER_PASSWORD`: *(Your Google App Password)*
 3. **Deploy:** Render will automatically build the `Dockerfile` and launch the app.
 
+## ⚠️ Known Limitations & Future Roadmap
+
+- **Cloud Email Blocking:** Free cloud hosting tiers (like Render) often block outbound SMTP ports (25, 465, 587) to prevent spam.
+    - **Status:** The Email Reporting feature works **perfectly when running locally** (Loopback/ISP) or on a VPS (DigitalOcean/AWS).
+    - **Render:** You may encounter "Network Unreachable" errors on Render. We have planned a future update to integrate **SendGrid/Mailgun APIs** to bypass this restriction.
+- **Scanning Speed:** Nmap scans can take 2-5 minutes. The web interface handles this in the background.
+
+## ✅ Working Features
+- **Smart Vulnerability Scanner:** Uses Nmap scripts to find real risks.
+- **Simplified Reporting:** Translates technical jargon into plain English.
+- **Web Interface:** Clean, responsive UI for easy scanning.
+- **MacOS Integration:** Zero-conf email sending via Apple Mail app.
+
+
