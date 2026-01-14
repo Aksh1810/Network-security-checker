@@ -120,6 +120,14 @@
             <button type="submit">Run Scan</button>
         </form>
 
+        <!-- Debugging Tool: Instant Test Email -->
+        <form action="/test-email" method="POST" style="margin-top: 10px;">
+            <input type="hidden" name="email" id="hidden-test-email">
+            <button type="submit"
+                onclick="document.getElementById('hidden-test-email').value = document.getElementById('email').value; if(!document.getElementById('email').value){ alert('Please enter an email first'); return false; }"
+                style="background-color: #6b7280;">Test Email Settings (Instant)</button>
+        </form>
+
         <div class="note">
             Scanning usually takes 2-5 minutes. <br>
             Results will be sent to your email.

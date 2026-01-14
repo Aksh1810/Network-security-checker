@@ -57,6 +57,22 @@ def run_async_scan(ip, email):
     except Exception as e:
         print(f"Error in background task: {e}")
 
+@app.route('/test-email', methods=['POST'])
+def test_email():
+    email = request.form.get('email')
+    if email:
+        print(f"Sending test email to {email}...")
+        try:
+            # Send a dummy report to verify connectivity
+            net_hc.send_email_report(email, "TEST_CONNECTION", "This is a quick test from the Render Web App to verify email settings.")
+            flash(f"Test email sent to {email}!")
+        except Exception as e:
+            flash(f"Test failed: {e}")
+            print(f"Test failed: {e}")
+    else:
+        flash("Please enter an email address first.")
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
