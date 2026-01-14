@@ -9,7 +9,7 @@ from email.message import EmailMessage
 # Configuration for Email
 # NOTE: You must configure these variables or set them in your environment for email to work.
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'networksecscanner@gmail.com')
-SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD', 'your_app_password')
+SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD', 'nrep tddh kksq isnp')
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
 
