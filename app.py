@@ -64,10 +64,13 @@ def test_email():
         print(f"Sending test email to {email}...")
         try:
             # Send a dummy report to verify connectivity
-            net_hc.send_email_report(email, "TEST_CONNECTION", "This is a quick test from the Render Web App to verify email settings.")
-            flash(f"Test email sent to {email}!")
+            success, msg = net_hc.send_email_report(email, "TEST_CONNECTION", "This is a quick test from the Render Web App.")
+            if success:
+                flash(f"SUCCESS: {msg}")
+            else:
+                flash(f"ERROR: {msg}")
         except Exception as e:
-            flash(f"Test failed: {e}")
+            flash(f"Test crashed: {e}")
             print(f"Test failed: {e}")
     else:
         flash("Please enter an email address first.")
