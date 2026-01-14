@@ -1,90 +1,40 @@
 # Network Vulnerability Scanner
 
-A Python script designed to make network security accessible to everyone. It performs vulnerability scanning using `nmap`, translates the technical results into a **simple, non-technical report**, and emails it to the user.
+This project is a **user-friendly network security tool** designed to bridge the gap between complex technical scanning and everyday users. It transforms a standard Nmap vulnerability scan into a simple, easy-to-understand health report delivered directly to your email.
 
-## Features
+## 🎯 Project Goal
 
-- **Interactive & Easy:** Simply run the script and enter the Target IP and your Email.
-- **Smart Reporting:** Automatically translates complex technical data into a human-readable summary (e.g., explaining what "Port 80" means).
-- **Vulnerability Scanning:** Uses Nmap (`-sV --script=vuln`) to detect running services and potential security risks.
-- **Seamless Email (macOS):** On macOS, it uses the native **Mail app** to send reports without requiring you to enter a password in the script.
-- **Cross-Platform:** Works on Linux/Windows as well (requires SMTP configuration).
+The primary goal is to make network security accessible. Traditional tools like Nmap produce dense, technical output that is confusing for non-technical users. This application parses those results and explains them in plain English, highlighting risks without the jargon.
 
-## Requirements
+## ✨ Key Features
 
-1. **Python 3.x**
-2. **Nmap** installed:
-   - MacOS: `brew install nmap`
-   - Linux: `sudo apt install nmap`
-3. **Email Configuration:**
-   - **MacOS:** Uses your local Mail app accounts automatically (Default sender request: `networksecscanner@gmail.com`).
-   - **Linux/Windows:** Requires a Gmail account and App Password.
+-   **Interactive Web Interface:** A modern, clean web UI (built with Flask) allows users to easily input their targets.
+-   **Automated Vulnerability Scanning:** Powered by the industry-standard `nmap` engine, performing in-depth analysis (`-sV --script=vuln`) of network devices.
+-   **Smart Report Generation:** A custom parsing engine that translates "Open Port 80" into "There is a website hosted here."
+-   **Email Alerts:** Automatically delivers the full health report to the user's inbox.
+-   **Cross-Platform Architecture:**
+    -   **Web/Cloud:** Dockerized for easy deployment (e.g., Render/AWS).
+    -   **Local (macOS):** Features native integration with the Apple Mail app for seamless local usage.
 
-## Usage
+## 🛠️ Technology Stack
 
-1.  **Run the script:**
-    ```bash
-    python3 net-hc.py
-    ```
+-   **Backend:** Python 3, Flask
+-   **Scanning Engine:** Nmap (Network Mapper)
+-   **Deployment:** Docker, Gunicorn
+-   **Frontend:** HTML5, CSS3
 
-2.  **Follow the prompts:**
-    - Enter the **IP Address** you want to scan.
-    - Enter the **Email Address** where you want to receive the report.
+## 📊 Example Output
 
-3.  **Get your Report:**
-    - The script will scan the target (this may take a few minutes).
-    - It will generate a **Simple Network Health Report**.
-    - The report is saved locally in `outputs/` and emailed to you.
+Instead of confusing code, the user receives a report like this:
 
-## Configuration (Optional for macOS)
+> **Summary:** We found 1 accessible service on this device.
+>
+> **Detail:** Port 80 is OPEN.
+> **What this means:** This usually means a website or web interface is hosted here.
+>
+> **Action:** If you didn't set this up, you should check your router settings.
 
-**If you are on Linux/Windows** or want to force a specific Gmail account via SMTP, you must configure the credentials:
+## ⚠️ Current Status & Limitations
 
-1.  Open `net-hc.py`.
-2.  Edit the variables or set environment variables:
-    ```python
-    SENDER_EMAIL = 'your_account@gmail.com'
-    SENDER_PASSWORD = 'your_app_password' # Generate this in Google Account > Security
-    ```
-
-## Output Example
-
-The email report includes a friendly summary like this:
-
-> **GOOD NEWS:** We found no 'open doors' (ports) on this device.
-
-Or:
-
-> **ATTENTION:** Port 80 is OPEN. This usually means a website is hosted here.
-
-## 🌐 Web Application
-
-You can also run this tool as a web interface:
-1. Install dependencies: `pip install -r requirements.txt`
-2. Run the server: `python3 app.py`
-3. Open `http://localhost:5000`
-
-## 🚀 Deployment (Render)
-
-This project is ready for Docker-based deployment (e.g., on Render):
-
-1. **New Web Service:** Connect this repo on Render.
-2. **Environment Variables:**
-   - `SENDER_EMAIL`: `networksecscanner@gmail.com`
-   - `SENDER_PASSWORD`: *(Your Google App Password)*
-3. **Deploy:** Render will automatically build the `Dockerfile` and launch the app.
-
-## ⚠️ Known Limitations & Future Roadmap
-
-- **Cloud Email Blocking:** Free cloud hosting tiers (like Render) often block outbound SMTP ports (25, 465, 587) to prevent spam.
-    - **Status:** The Email Reporting feature works **perfectly when running locally** (Loopback/ISP) or on a VPS (DigitalOcean/AWS).
-    - **Render:** You may encounter "Network Unreachable" errors on Render. We have planned a future update to integrate **SendGrid/Mailgun APIs** to bypass this restriction.
-- **Scanning Speed:** Nmap scans can take 2-5 minutes. The web interface handles this in the background.
-
-## ✅ Working Features
-- **Smart Vulnerability Scanner:** Uses Nmap scripts to find real risks.
-- **Simplified Reporting:** Translates technical jargon into plain English.
-- **Web Interface:** Clean, responsive UI for easy scanning.
-- **MacOS Integration:** Zero-conf email sending via Apple Mail app.
-
-
+-   **Cloud Deployment:** Free cloud tier hosting (like Render) limits outbound SMTP email ports to prevent spam. While the app is fully functional, the Email Reporting feature is currently optimized for **Local (macOS/Linux) or VPS (DigitalOcean/AWS)** environments.
+-   **Performance:** Scans provide deep insights and typically take 2-5 minutes to complete.
