@@ -206,7 +206,7 @@ def send_email_report(recipient_email, ip, scan_results):
     print("\n[*] Falling back to standard SMTP (Gmail).")
     
     sender_email = SENDER_EMAIL
-    sender_password = SENDER_PASSWORD
+    sender_password = SENDER_PASSWORD.replace(' ', '')
     
     if sender_email == 'your_email@gmail.com' or sender_password == 'your_app_password':
         print("[!] Email configuration missing or default.")

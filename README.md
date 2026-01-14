@@ -56,3 +56,21 @@ The email report includes a friendly summary like this:
 Or:
 
 > **ATTENTION:** Port 80 is OPEN. This usually means a website is hosted here.
+
+## 🌐 Web Application
+
+You can also run this tool as a web interface:
+1. Install dependencies: `pip install -r requirements.txt`
+2. Run the server: `python3 app.py`
+3. Open `http://localhost:5000`
+
+## 🚀 Deployment (Render)
+
+This project is ready for Docker-based deployment (e.g., on Render):
+
+1. **New Web Service:** Connect this repo on Render.
+2. **Environment Variables:**
+   - `SENDER_EMAIL`: `networksecscanner@gmail.com`
+   - `SENDER_PASSWORD`: *(Your Google App Password)*
+3. **Deploy:** Render will automatically build the `Dockerfile` and launch the app.
+
