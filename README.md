@@ -11,7 +11,7 @@ A Python script to perform basic network health checks on a list of IP addresses
 
 ## Requirements
 
-- Python 3.x
+- Python
 - `ping` and `traceroute` utilities (usually available by default on Unix-like systems).
 
 ## Usage
