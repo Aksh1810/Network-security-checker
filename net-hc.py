@@ -222,41 +222,63 @@ def send_email_report(recipient_email, ip, scan_results):
 
     context = ssl.create_default_context()
 
-    # Attempt 1: Try Port 587 (STARTTLS)
+    # HELPER: Force IPv4 Patch
+    # Render and other cloud providers often have broken IPv6 routing for SMTP.
+    # We monkey-patch socket.getaddrinfo to filter for AF_INET (IPv4) only.
+    original_getaddrinfo = socket.getaddrinfo
+    def ipv4_getaddrinfo(*args, **kwargs):
+        responses = original_getaddrinfo(*args, **kwargs)
+        return [r for r in responses if r[0] == socket.AF_INET]
+    
+    # Apply patch
+    socket.getaddrinfo = ipv4_getaddrinfo
+
     try:
-        print(f"[*] Attempting connection to {SMTP_SERVER}:587 (STARTTLS)...")
-        # Add timeout to avoid Gunicorn worker kill
-        server = smtplib.SMTP(SMTP_SERVER, 587, timeout=10)
-        server.ehlo()
-        server.starttls(context=context)
-        server.ehlo()
-        server.login(sender_email, sender_password)
-        server.send_message(msg)
-        server.quit()
-        
-        print("[+] Email sent via Port 587.")
-        logging.info(f"Email successfully sent to {recipient_email} via Port 587")
-        return True, "Email sent successfully via Port 587!"
-    except Exception as e1:
-        print(f"[-] Port 587 failed: {e1}")
-        
-        # Attempt 2: Try Port 465 (SSL) - Fallback for "Network Unreachable"
+        # Attempt 1: Try Port 587 (STARTTLS)
         try:
-            print(f"[*] Attempting connection to {SMTP_SERVER}:465 (SSL)...")
-            server = smtplib.SMTP_SSL(SMTP_SERVER, 465, context=context, timeout=10)
+            print(f"[*] Attempting connection to {SMTP_SERVER}:587 (IPv4 Forced)...")
+            server = smtplib.SMTP(SMTP_SERVER, 587, timeout=15)
+            server.ehlo()
+            server.starttls(context=context)
+            server.ehlo()
             server.login(sender_email, sender_password)
             server.send_message(msg)
             server.quit()
             
-            print("[+] Email sent via Port 465.")
-            logging.info(f"Email successfully sent to {recipient_email} via Port 465")
-            return True, "Email sent successfully via Port 465 (Fallback)!"
+            print("[+] Email sent via Port 587.")
+            logging.info(f"Email successfully sent to {recipient_email} via Port 587")
+            # Restore patch
+            socket.getaddrinfo = original_getaddrinfo
+            return True, "Email sent successfully via Port 587!"
             
-        except Exception as e2:
-            error_msg = f"All SMTP attempts failed. 587: {e1} | 465: {e2}"
-            print(f"[-] {error_msg}")
-            logging.error(error_msg)
-            return False, f"Failed to send email. Port 587 and 465 blocked. Error: {e2}"
+        except Exception as e1:
+            print(f"[-] Port 587 failed: {e1}")
+            
+            # Attempt 2: Try Port 465 (SSL)
+            try:
+                print(f"[*] Attempting connection to {SMTP_SERVER}:465 (IPv4 Forced)...")
+                server = smtplib.SMTP_SSL(SMTP_SERVER, 465, context=context, timeout=15)
+                server.login(sender_email, sender_password)
+                server.send_message(msg)
+                server.quit()
+                
+                print("[+] Email sent via Port 465.")
+                logging.info(f"Email successfully sent to {recipient_email} via Port 465")
+                # Restore patch
+                socket.getaddrinfo = original_getaddrinfo
+                return True, "Email sent successfully via Port 465 (Fallback)!"
+                
+            except Exception as e2:
+                raise e2 # Escalate to outer block
+
+    except Exception as e:
+        # Restore patch in case of failure
+        socket.getaddrinfo = original_getaddrinfo
+        
+        error_msg = f"Network Unreachable (IPv4 Forced). Error: {e}"
+        print(f"[-] {error_msg}")
+        logging.error(error_msg)
+        return False, error_msg
 
 def main():
     try:
