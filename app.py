@@ -17,6 +17,12 @@ spec.loader.exec_module(net_hc)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    # Detect User IP (Handles proxies like Render/Heroku)
+    user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    # If multiple IPs are present in X-Forwarded-For, take the first one
+    if user_ip and ',' in user_ip:
+        user_ip = user_ip.split(',')[0].strip()
+
     if request.method == 'POST':
         ip = request.form.get('ip')
         email = request.form.get('email')
@@ -32,7 +38,7 @@ def index():
         flash(f'Scan started for {ip}! Results will be sent to {email}.')
         return redirect(url_for('index'))
         
-    return render_template('index.html')
+    return render_template('index.html', user_ip=user_ip)
 
 def run_async_scan(ip, email):
     """

@@ -103,6 +103,13 @@
             <div class="form-group">
                 <label for="ip">Target IP Address</label>
                 <input type="text" id="ip" name="ip" placeholder="e.g. 192.168.1.1" required>
+                {% if user_ip %}
+                <div style="margin-top: 5px; font-size: 0.85rem; color: #4b5563;">
+                    Your detected IP: <strong id="detected-ip">{{ user_ip }}</strong>
+                    <a href="#" onclick="document.getElementById('ip').value = '{{ user_ip }}'; return false;"
+                        style="color: #2563eb; margin-left: 5px;">(Use this)</a>
+                </div>
+                {% endif %}
             </div>
 
             <div class="form-group">

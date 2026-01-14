@@ -208,23 +208,10 @@ def send_email_report(recipient_email, ip, scan_results):
     sender_email = SENDER_EMAIL
     sender_password = SENDER_PASSWORD
     
-    if sender_email == 'your_email@gmail.com' and sender_email != 'networksecscanner@gmail.com':
-         # logic to ask for creds if not default... simplified for this edit to just show the prompt if needed
-         pass
-
-    if sender_email == 'your_email@gmail.com': # Catch-all if environment didn't have it
-        print("\n[!] Sender credentials needed.")
-        # ... (Same interactive logic as before) ...
-        # For brevity in this large replacement, assuming user handles credentials or uses Mac Mail
-        # But we must keep the code valid.
-        
-        choice = input("    Enter credentials now? (y/n): ").strip().lower()
-        if choice == 'y':
-            sender_email = input("    Sender Email: ").strip()
-            sender_password = input("    Sender App Password: ").strip()
-        else:
-            print("[-] Email skipped.")
-            return
+    if sender_email == 'your_email@gmail.com' or sender_password == 'your_app_password':
+        print("[!] Email configuration missing or default.")
+        logging.error("Sender credentials are not configured in environment variables. Cannot send email.")
+        return
 
     msg = EmailMessage()
     msg.set_content(full_email_body)
