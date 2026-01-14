@@ -222,7 +222,30 @@ def send_email_report(recipient_email, ip, scan_results):
     context = ssl.create_default_context()
 
     try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        # Force IPv4 connection to avoid [Errno 101] Network is unreachable on some cloud providers
+        # Create a custom connection to port 587
+        import socket
+        try:
+            # Resolve IPv4 specifically
+            addr_info = socket.getaddrinfo(SMTP_SERVER, SMTP_PORT, socket.AF_INET, socket.SOCK_STREAM)
+            family, socktype, proto, canonname, sockaddr = addr_info[0]
+            
+            # Manually connect
+            s = socket.socket(family, socktype, proto)
+            s.connect(sockaddr)
+            
+            # Pass this socket to smtplib
+            server = smtplib.SMTP(host=SMTP_SERVER, port=SMTP_PORT)
+            server.sock = s
+            server.file = s.makefile('rb')
+            server.get_reply() # Read initial greeting from server
+            server.ehlo()
+        except Exception as socket_err:
+            print(f"[-] Custom IPv4 socket failed: {socket_err}. Falling back to default.")
+            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+
+        # Proceed with TLS and Login
+        with server:
             server.starttls(context=context)
             server.login(sender_email, sender_password)
             server.send_message(msg)
