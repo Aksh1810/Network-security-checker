@@ -222,30 +222,40 @@ def send_email_report(recipient_email, ip, scan_results):
 
     context = ssl.create_default_context()
 
+    # Attempt 1: Try Port 587 (STARTTLS)
     try:
-        # Connect to Gmail SMTP
-        # Note: We use a standard connection first. If you face issues, we can force IPv4 via patching getaddrinfo, 
-        # but usually allowing the system to handle it with a proper timeout is safer.
-        
-        # NOTE: If Render is blocking port 587, we might need 465. But let's try standard 587 with robust error handling.
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        print(f"[*] Attempting connection to {SMTP_SERVER}:587 (STARTTLS)...")
+        server = smtplib.SMTP(SMTP_SERVER, 587)
         server.ehlo()
         server.starttls(context=context)
         server.ehlo()
-        
         server.login(sender_email, sender_password)
         server.send_message(msg)
         server.quit()
         
-        print("[+] Email sent via SMTP.")
-        logging.info(f"Email successfully sent to {recipient_email}")
-        return True, "Email sent successfully!"
+        print("[+] Email sent via Port 587.")
+        logging.info(f"Email successfully sent to {recipient_email} via Port 587")
+        return True, "Email sent successfully via Port 587!"
+    except Exception as e1:
+        print(f"[-] Port 587 failed: {e1}")
         
-    except Exception as e:
-        error_msg = f"SMTP Connection Encountered Error: {str(e)}"
-        print(f"[-] {error_msg}")
-        logging.error(error_msg)
-        return False, error_msg
+        # Attempt 2: Try Port 465 (SSL) - Fallback for "Network Unreachable"
+        try:
+            print(f"[*] Attempting connection to {SMTP_SERVER}:465 (SSL)...")
+            server = smtplib.SMTP_SSL(SMTP_SERVER, 465, context=context)
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+            server.quit()
+            
+            print("[+] Email sent via Port 465.")
+            logging.info(f"Email successfully sent to {recipient_email} via Port 465")
+            return True, "Email sent successfully via Port 465 (Fallback)!"
+            
+        except Exception as e2:
+            error_msg = f"All SMTP attempts failed. 587: {e1} | 465: {e2}"
+            print(f"[-] {error_msg}")
+            logging.error(error_msg)
+            return False, f"Failed to send email. Port 587 and 465 blocked. Error: {e2}"
 
 def main():
     try:
