@@ -1,6 +1,6 @@
 # Network Vulnerability Scanner
 
-This project is a **user-friendly network security tool** designed to bridge the gap between complex technical scanning and everyday users. It transforms a standard Nmap vulnerability scan into a simple, easy-to-understand health report delivered directly to your email.
+This project is a **user-friendly network security tool** designed to connect the gap between complex technical scanning and everyday users. It transforms a standard Nmap vulnerability scan into a simple, easy-to-understand health report delivered directly to your email.
 
 ## 🎯 Project Goal
 
