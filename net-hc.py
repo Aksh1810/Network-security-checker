@@ -6,13 +6,29 @@ import smtplib
 import ssl
 import socket
 from email.message import EmailMessage
+import yaml
+
+# Load config from YAML if it exists
+def load_config():
+    config_path = os.path.join(os.getcwd(), 'config.yaml')
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            return yaml.safe_load(f)
+    return {}
+
+CONFIG = load_config()
+MS = CONFIG.get('mail_settings', {})
 
 # Configuration for Email
-# NOTE: You must configure these variables or set them in your environment for email to work.
-SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'networksecscanner@gmail.com')
-SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD', 'nrep tddh kksq isnp')
-SMTP_SERVER = 'smtp.gmail.com'
-SMTP_PORT = 587
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', MS.get('email', 'networksecscanner@gmail.com'))
+SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD', MS.get('password', 'nrep tddh kksq isnp'))
+SMTP_SERVER = os.environ.get('SMTP_SERVER', MS.get('smtp_server', 'smtp.gmail.com'))
+SMTP_PORT = int(os.environ.get('SMTP_PORT', MS.get('smtp_port', 587)))
+
+# Mailgun Configuration (Alternative for Render/Cloud)
+MAILGUN_API_KEY = os.environ.get('MAILGUN_API_KEY', MS.get('mailgun_api_key'))
+MAILGUN_DOMAIN = os.environ.get('MAILGUN_DOMAIN', MS.get('mailgun_domain'))
+import requests
 
 LOG_LEVEL = logging.DEBUG
 CURRENT_DIR = os.getcwd()
@@ -25,6 +41,71 @@ if not os.path.exists(OUTPUT_DIR):
 
 logging.basicConfig(filename=LOG_OUTPUT_PATH, level=LOG_LEVEL,
                     format='%(asctime)s - %(levelname)s - %(message)s')
+
+def get_passive_info(ip):
+    """
+    Gathers info about an IP/Domain without using Nmap.
+    Uses public API (ip-api.com) and basic socket checks.
+    """
+    print(f"[*] Gathering passive info for {ip}...")
+    results = {"ip": ip, "passive_data": {}, "dns": {}, "connectivity": {}}
+    
+    # 1. IP-API lookup (Passive Geolocation & ISP)
+    try:
+        # If it's a hostname, resolve it first
+        resolved_ip = socket.gethostbyname(ip)
+        response = requests.get(f"http://ip-api.com/json/{resolved_ip}", timeout=5)
+        if response.status_code == 200:
+            results["passive_data"] = response.json()
+    except Exception as e:
+        results["passive_data"] = {"error": str(e)}
+
+    # 2. Basic Socket Connectivity (Check common ports 80, 443, etc.)
+    common_ports = [80, 443, 21, 22, 25, 53, 3306, 5000, 8000, 8080]
+    open_ports = []
+    print(f"[*] Checking common ports (80, 443, etc.) via stealth connection...")
+    for port in common_ports:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.5)
+            if s.connect_ex((ip, port)) == 0:
+                open_ports.append(port)
+    results["connectivity"]["open_ports"] = open_ports
+
+    return results
+
+def format_passive_report(ip, data):
+    p = data.get("passive_data", {})
+    report = f"""
+==================================================================
+              PASSIVE NETWORK HEALTH REPORT
+==================================================================
+
+Target: {ip}
+Resolved IP: {p.get('query', 'Unknown')}
+Location: {p.get('city', 'Unknown')}, {p.get('regionName', 'Unknown')}, {p.get('country', 'Unknown')}
+ISP/Organization: {p.get('isp', 'Unknown')} / {p.get('org', 'Unknown')}
+
+NETWORK ACCESSIBILITY
+---------------------
+"""
+    open_ports = data.get("connectivity", {}).get("open_ports", [])
+    if open_ports:
+        report += f"[!] Found {len(open_ports)} common port(s) open: {', '.join(map(str, open_ports))}\n"
+        report += "    (Note: This was a quick check, more ports might be open but hidden.)\n"
+    else:
+        report += "[+] No common public ports (Web/SSH/FTP) were found open.\n"
+        report += "    This device appears to be well-hidden or heavily firewalled.\n"
+
+    report += """
+SECURITY SUMMARY
+----------------
+• This is a 'Passive' report because standard active scanning was blocked.
+• The device is hosted/connected via {isp}.
+• Recommendation: Ensure any cloud-based services have strict security groups.
+
+==================================================================
+""".format(isp=p.get('isp', 'your provider'))
+    return report
 
 def get_user_input():
     print("\n=== Network Vulnerability Scanner ===")
@@ -47,12 +128,10 @@ def run_nmap_scan(ip):
         result = subprocess.run(command, capture_output=True, text=True, timeout=900)
         
         if result.returncode != 0:
-            error_msg = f"Nmap scan failed or was interrupted.\nStderr: {result.stderr}"
-            logging.error(f"Nmap error: {result.stderr}")
-            if not result.stdout:
-                return error_msg
-            # If we have some stdout, we might want to return it even if returncode != 0
-            return result.stdout + "\n" + error_msg
+            # If Nmap fails, try Passive Scan as fallback
+            print("[!] Nmap scan failed. Falling back to Passive Discovery...")
+            passive_data = get_passive_info(ip)
+            return format_passive_report(ip, passive_data)
         
         logging.info(f"Scan completed for {ip}")
         return result.stdout
@@ -169,6 +248,33 @@ def send_email_report(recipient_email, ip, scan_results):
     # Combined Body
     full_email_body = f"{simple_report}\n\n\n=== TECHNICAL RAW OUTPUT ===\n{scan_results}"
     
+    # METHOD 0: Try Mailgun API (Best for Cloud/Render)
+    if MAILGUN_API_KEY and MAILGUN_DOMAIN:
+        print("[*] Attempting to send via Mailgun API...")
+        try:
+            # IMPORTANT: On sandbox domains, Mailgun usually requires the 'from' 
+            # address to be postmaster@domain or something @domain.
+            mailgun_sender = f"Network Scanner <postmaster@{MAILGUN_DOMAIN}>" if "sandbox" in MAILGUN_DOMAIN else f"Network Scanner <{SENDER_EMAIL}>"
+            
+            response = requests.post(
+                f"https://api.mailgun.net/v3/{MAILGUN_DOMAIN}/messages",
+                auth=("api", MAILGUN_API_KEY),
+                data={"from": mailgun_sender,
+                      "to": [recipient_email],
+                      "subject": f"Simple Health Report: {ip}",
+                      "text": full_email_body})
+            
+            if response.status_code == 200:
+                print("[+] Email sent successfully via Mailgun!")
+                logging.info(f"Email sent via Mailgun to {recipient_email}")
+                return True, "Email sent successfully via Mailgun API!"
+            else:
+                print(f"[-] Mailgun failed (Status {response.status_code}): {response.text}")
+                logging.error(f"Mailgun error: {response.text}")
+        except Exception as e:
+            print(f"[-] Error trying to use Mailgun: {e}")
+            logging.error(f"Mailgun exception: {e}")
+
     # METHOD 1: Try using macOS Mail App (No password input required if configured)
     if sys.platform == 'darwin':
         print("[*] Detected macOS. Attempting to send via Apple Mail app...")
@@ -196,7 +302,7 @@ def send_email_report(recipient_email, ip, scan_results):
             if result.returncode == 0:
                 print("[+] Email sent successfully via Apple Mail!")
                 logging.info(f"Email sent via Apple Mail to {recipient_email}")
-                return
+                return True, "Email sent via Apple Mail!"
             else:
                 print(f"[-] Apple Mail automation failed: {result.stderr}")
                 print("    (You may need to grant Terminal permission to control Mail in System Settings)")
@@ -212,7 +318,7 @@ def send_email_report(recipient_email, ip, scan_results):
     if sender_email == 'your_email@gmail.com' or sender_password == 'your_app_password':
         print("[!] Email configuration missing or default.")
         logging.error("Sender credentials are not configured in environment variables. Cannot send email.")
-        return
+        return False, "SMTP credentials not configured."
 
     msg = EmailMessage()
     msg.set_content(full_email_body)

@@ -66,7 +66,15 @@ def test_email():
         print(f"Sending test email to {email}...")
         try:
             # Send a dummy report to verify connectivity
-            success, msg = net_hc.send_email_report(email, "TEST_CONNECTION", "This is a quick test from the Render Web App.")
+            # net_hc.send_email_report now returns (success, message)
+            result = net_hc.send_email_report(email, "TEST_CONNECTION", "This is a quick test from the Network Health Checker.")
+            
+            # Handle both return types (bool or tuple) safely
+            if isinstance(result, tuple):
+                success, msg = result
+            else:
+                success, msg = result, "Email operation finished."
+
             if success:
                 flash(f"SUCCESS: {msg}")
             else:

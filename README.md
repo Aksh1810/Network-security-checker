@@ -19,7 +19,8 @@ The primary goal is to make network security accessible. Traditional tools like 
 ## 🛠️ Technology Stack
 
 -   **Backend:** Python 3, Flask
--   **Scanning Engine:** Nmap (Network Mapper)
+-   **Scanning Engine:** Nmap (Active) & Socket/IP-API (Passive Fallback)
+-   **Email Engine:** Mailgun HTTP API (Primary for Cloud) & SMTP (Fallback)
 -   **Deployment:** Docker, Gunicorn
 -   **Frontend:** HTML5, CSS3
 
@@ -34,7 +35,16 @@ Instead of confusing code, the user receives a report like this:
 >
 > **Action:** If you didn't set this up, you should check your router settings.
 
+## 🚀 Cloud Setup (Render/Heroku)
+
+To ensure email works on cloud platforms, this app uses the **Mailgun API** to bypass SMTP port blocking.
+
+1.  Create a free account at [Mailgun](https://www.mailgun.com/).
+2.  Add your **Mailgun Domain** and **Private API Key** to your environment variables:
+    -   `MAILGUN_API_KEY`: Your "key-..." or "api-..." value.
+    -   `MAILGUN_DOMAIN`: Your sandbox or custom domain.
+
 ## ⚠️ Current Status & Limitations
 
--   **Cloud Deployment:** Free cloud tier hosting (like Render) limits outbound SMTP email ports to prevent spam. While the app is fully functional, the Email Reporting feature is currently optimized for **Local (macOS/Linux) or VPS (DigitalOcean/AWS)** environments.
--   **Performance:** Scans provide deep insights and typically take 2-5 minutes to complete.
+-   **Passive Fallback:** If the hosting provider (like Render) blocks Nmap's active scanning, the app automatically switches to **Passive Mode**. This uses metadata and metadata-lookups to give you security insights without triggering network blocks.
+-   **Performance:** Active scans typically take 2-5 minutes; Passive scans take seconds.
