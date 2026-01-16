@@ -239,13 +239,148 @@ Next Steps:
     
     return report
 
+def generate_html_report(ip, nmap_output):
+    """
+    Generates a beautiful HTML email report for non-technical users.
+    """
+    lines = nmap_output.splitlines()
+    open_ports = []
+    vulnerabilities = []
+    
+    # --- Parsing Logic (Same as text version) ---
+    is_capturing_ports = False
+    for line in lines:
+        if "PORT" in line and "STATE" in line and "SERVICE" in line:
+            is_capturing_ports = True
+            continue
+        if is_capturing_ports and (not line.strip() or line.startswith("|") or line.startswith("SF:")):
+            if "VULNERABLE" in line or "CVE-" in line:
+                vulnerabilities.append(line.strip())
+            continue
+        if is_capturing_ports and "/tcp" in line and "open" in line:
+            parts = line.split()
+            if len(parts) >= 3:
+                port_data = {
+                    'port': parts[0],
+                    'service': parts[2],
+                    'desc': "Unknown Service"
+                }
+                # Add friendly descriptions
+                svc = parts[2].lower()
+                if "http" in svc: port_data['desc'] = "Web Website/Interface"
+                elif "ssh" in svc: port_data['desc'] = "Remote Admin Access"
+                elif "ftp" in svc: port_data['desc'] = "File Transfer"
+                elif "rtsp" in svc: port_data['desc'] = "Media Stream / Camera"
+                elif "telnet" in svc: port_data['desc'] = "Unsecure Remote Access"
+                elif "smtp" in svc: port_data['desc'] = "Email Server"
+                elif "domain" in svc: port_data['desc'] = "DNS Server"
+                
+                open_ports.append(port_data)
+        elif "VULNERABLE:" in line:
+             vulnerabilities.append(line.strip())
+    
+    # --- HTML Generation ---
+    scan_date = os.popen('date').read().strip()
+    
+    # Determine Status
+    if not open_ports:
+        status_color = "#28a745" # Green
+        status_title = "Safe & Secure"
+        status_message = "Great news! We didn't find any open doors on this device."
+    else:
+        status_color = "#dc3545" # Red
+        status_title = "Action Required"
+        status_message = f"We found {len(open_ports)} accessible services on this device."
+
+    # Build Port Rows
+    ports_html = ""
+    if open_ports:
+        for p in open_ports:
+            ports_html += f"""
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 10px; font-weight: bold;">{p['port']}</td>
+                <td style="padding: 10px;">{p['service']}</td>
+                <td style="padding: 10px; color: #666;">{p['desc']}</td>
+            </tr>
+            """
+    else:
+        ports_html = "<tr><td colspan='3' style='padding:15px; text-align:center;'>No open ports found. This is good!</td></tr>"
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }}
+            .container {{ max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }}
+            .header {{ background-color: #004de6; color: #ffffff; padding: 20px; text-align: center; }}
+            .header h1 {{ margin: 0; font-size: 24px; }}
+            .status-card {{ background-color: {status_color}; color: white; padding: 15px; text-align: center; margin: 20px; border-radius: 4px; }}
+            .content {{ padding: 20px; color: #333; line-height: 1.6; }}
+            .table-box {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
+            .footer {{ background-color: #eee; text-align: center; padding: 10px; font-size: 12px; color: #888; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Network Health Report</h1>
+            </div>
+            
+            <div class="status-card">
+                <h2 style="margin:0;">{status_title}</h2>
+                <p style="margin:5px 0 0 0;">{status_message}</p>
+            </div>
+            
+            <div class="content">
+                <p><strong>Target IP:</strong> {ip}</p>
+                <p><strong>Scan Date:</strong> {scan_date}</p>
+                
+                <h3>🔍 What We Found</h3>
+                <table class="table-box">
+                    <tr style="background:#f8f9fa; text-align:left;">
+                        <th style="padding:10px;">Port</th>
+                        <th style="padding:10px;">Service</th>
+                        <th style="padding:10px;">Description</th>
+                    </tr>
+                    {ports_html}
+                </table>
+                <br>
+                
+                <div style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 4px; color: #856404;">
+                    <strong>💡 Next Steps:</strong>
+                    <ul style="margin-top: 5px; padding-left: 20px;">
+                        <li>If you don't recognize a service above, turn it off.</li>
+                        <li>Ensure all open services are password protected.</li>
+                        <li>Keep your device software updated.</li>
+                    </ul>
+                </div>
+                
+                <p style="font-size: 12px; color: #999; margin-top: 20px;">
+                    *Technical Note: Raw scan data is attached below only if viewed in plain text mode.
+                </p>
+            </div>
+            
+            <div class="footer">
+                Securing your network, one scan at a time.<br>
+                Generated by Network Health Checker
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return html
+
 def send_email_report(recipient_email, ip, scan_results):
     print(f"[*] Preparing to send email report to {recipient_email}...")
     
-    # Generate the simple version
+    # Generate the simple version (Plain Text)
     simple_report = generate_simplified_report(ip, scan_results)
     
-    # Combined Body
+    # Generate HTML version (Rich Text)
+    html_report = generate_html_report(ip, scan_results)
+    
+    # Combined Body (Plain Text Fallback)
     full_email_body = f"{simple_report}\n\n\n=== TECHNICAL RAW OUTPUT ===\n{scan_results}"
     
     # METHOD -1: SendGrid (Recommended for Render)
@@ -259,8 +394,9 @@ def send_email_report(recipient_email, ip, scan_results):
             message = Mail(
                 from_email=SENDER_EMAIL,
                 to_emails=recipient_email,
-                subject=f"Simple Health Report: {ip}",
-                plain_text_content=full_email_body)
+                subject=f"Network Health Report: {ip}",
+                plain_text_content=full_email_body,
+                html_content=html_report) # Added HTML content
             
             sg = SendGridAPIClient(SENDGRID_API_KEY)
             response = sg.send(message)
