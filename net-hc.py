@@ -275,39 +275,11 @@ def send_email_report(recipient_email, ip, scan_results):
             print(f"[-] Error trying to use Mailgun: {e}")
             logging.error(f"Mailgun exception: {e}")
 
-    # METHOD 1: Try using macOS Mail App (No password input required if configured)
-    if sys.platform == 'darwin':
-        print("[*] Detected macOS. Attempting to send via Apple Mail app...")
-        print("    (Note: This uses the default account in your Mail app, ignoring 'SENDER_EMAIL' settings)")
-        try:
-            # Prepare the body for AppleScript (escape quotes and handle newlines)
-            # Use the simplified report for the main view
-            safe_body = full_email_body.replace('\\', '\\\\').replace('"', '\\"')
-            safe_subject = f"Simple Health Report for {ip}"
-            
-            # AppleScript to create and send the email
-            # We explicitly set the 'sender' property to request a specific account
-            script = f'''
-            tell application "Mail"
-                set theMessage to make new outgoing message with properties {{subject:"{safe_subject}", content:"{safe_body}", visible:true, sender:"{SENDER_EMAIL}"}}
-                tell theMessage
-                    make new to recipient at end of to recipients with properties {{address:"{recipient_email}"}}
-                end tell
-                send theMessage
-            end tell
-            '''
-            
-            result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True)
-            
-            if result.returncode == 0:
-                print("[+] Email sent successfully via Apple Mail!")
-                logging.info(f"Email sent via Apple Mail to {recipient_email}")
-                return True, "Email sent via Apple Mail!"
-            else:
-                print(f"[-] Apple Mail automation failed: {result.stderr}")
-                print("    (You may need to grant Terminal permission to control Mail in System Settings)")
-        except Exception as e:
-            print(f"[-] Error trying to use Apple Mail: {e}")
+    # METHOD 1: Apple Mail (DISABLED to force using the configured Gmail account)
+    # if sys.platform == 'darwin':
+    #     print("[*] Detected macOS. Skipping Apple Mail to force SMTP (Gmail) for correct sender info...")
+    #     pass
+
 
     # METHOD 2: Fallback to SMTP (Requires Password)
     print("\n[*] Falling back to standard SMTP (Gmail).")
