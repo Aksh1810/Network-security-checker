@@ -38,13 +38,10 @@ logging.basicConfig(filename=LOG_OUTPUT_PATH, level=LOG_LEVEL,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 def get_passive_info(ip):
-    # This tries to get info about a target without poking it too hard (no nmap).
-    # Good for when the active scan gets blocked.
     print(f"[*] Gathering passive info for {ip}...")
     results = {"ip": ip, "passive_data": {}, "dns": {}, "connectivity": {}}
     
     try:
-        # Check where this IP is located physically using a public API
         resolved_ip = socket.gethostbyname(ip)
         response = requests.get(f"http://ip-api.com/json/{resolved_ip}", timeout=5)
         if response.status_code == 200:
@@ -52,7 +49,6 @@ def get_passive_info(ip):
     except Exception as e:
         results["passive_data"] = {"error": str(e)}
 
-    # Check a few common ports "quietly" to see if anything is obviously open
     common_ports = [80, 443, 21, 22, 25, 53, 3306, 5000, 8000, 8080]
     open_ports = []
     print(f"[*] Checking common ports (80, 443, etc.) via stealth connection...")
@@ -110,17 +106,12 @@ def run_nmap_scan(ip):
     print("    This process may take several minutes. Please wait...")
     logging.info(f"Starting nmap scan for {ip}")
     
-    # Run NMap! 
-    # -sV tries to identify versions of services
-    # --script=vuln runs a bunch of scripts to check for known vulnerabilities
     command = ["nmap", "-sV", "--script=vuln", ip]
     
     try:
-        # Give it 15 minutes max, otherwise kill it so it doesn't hang forever.
         result = subprocess.run(command, capture_output=True, text=True, timeout=900)
         
         if result.returncode != 0:
-            # If nmap crashed or failed, try the passive scan instead.
             print("[!] Nmap scan failed. Falling back to Passive Discovery...")
             passive_data = get_passive_info(ip)
             return format_passive_report(ip, passive_data)
@@ -232,7 +223,6 @@ def generate_html_report(ip, nmap_output):
     open_ports = []
     vulnerabilities = []
     
-    # --- Parsing Logic (Same as text version) ---
     is_capturing_ports = False
     for line in lines:
         if "PORT" in line and "STATE" in line and "SERVICE" in line:
@@ -250,7 +240,6 @@ def generate_html_report(ip, nmap_output):
                     'service': parts[2],
                     'desc': "Unknown Service"
                 }
-                # Add friendly descriptions
                 svc = parts[2].lower()
                 if "http" in svc: port_data['desc'] = "Web Website/Interface"
                 elif "ssh" in svc: port_data['desc'] = "Remote Admin Access"
@@ -264,20 +253,17 @@ def generate_html_report(ip, nmap_output):
         elif "VULNERABLE:" in line:
              vulnerabilities.append(line.strip())
     
-    # --- HTML Generation ---
     scan_date = os.popen('date').read().strip()
     
-    # Determine Status
     if not open_ports:
-        status_color = "#28a745" # Green
+        status_color = "#28a745"
         status_title = "Safe & Secure"
         status_message = "Great news! We didn't find any open doors on this device."
     else:
-        status_color = "#dc3545" # Red
+        status_color = "#dc3545"
         status_title = "Action Required"
         status_message = f"We found {len(open_ports)} accessible services on this device."
 
-    # Build Port Rows
     ports_html = ""
     if open_ports:
         for p in open_ports:
@@ -359,17 +345,12 @@ def generate_html_report(ip, nmap_output):
 def send_email_report(recipient_email, ip, scan_results):
     print(f"[*] Preparing to send email report to {recipient_email}...")
     
-    # Generate the simple version (Plain Text)
     simple_report = generate_simplified_report(ip, scan_results)
     
-    # Generate HTML version (Rich Text)
     html_report = generate_html_report(ip, scan_results)
     
-    # Combined Body (Plain Text Fallback)
     full_email_body = f"{simple_report}\n\n\n=== TECHNICAL RAW OUTPUT ===\n{scan_results}"
     
-    # METHOD -1: SendGrid (Recommended for Render)
-    # This is the best way to send email from the cloud properly.
     SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
     if SENDGRID_API_KEY:
         print("[*] Attempting to send via SendGrid API...")
@@ -382,7 +363,7 @@ def send_email_report(recipient_email, ip, scan_results):
                 to_emails=recipient_email,
                 subject=f"Network Health Report: {ip}",
                 plain_text_content=full_email_body,
-                html_content=html_report) # Added HTML content
+                html_content=html_report)
             
             sg = SendGridAPIClient(SENDGRID_API_KEY)
             response = sg.send(message)
@@ -397,12 +378,9 @@ def send_email_report(recipient_email, ip, scan_results):
             print(f"[-] Error trying to use SendGrid: {e}")
             logging.error(f"SendGrid exception: {e}")
 
-    # METHOD 0: Try Mailgun API (Best for Cloud/Render)
     if MAILGUN_API_KEY and MAILGUN_DOMAIN:
         print("[*] Attempting to send via Mailgun API...")
         try:
-            # IMPORTANT: On sandbox domains, Mailgun usually requires the 'from' 
-            # address to be postmaster@domain or something @domain.
             mailgun_sender = f"Network Scanner <postmaster@{MAILGUN_DOMAIN}>" if "sandbox" in MAILGUN_DOMAIN else f"Network Scanner <{SENDER_EMAIL}>"
             
             response = requests.post(
@@ -424,14 +402,8 @@ def send_email_report(recipient_email, ip, scan_results):
             print(f"[-] Error trying to use Mailgun: {e}")
             logging.error(f"Mailgun exception: {e}")
 
-    # METHOD 1: Apple Mail (DISABLED to force using the configured Gmail account)
-    # if sys.platform == 'darwin':
-    #     print("[*] Detected macOS. Skipping Apple Mail to force SMTP (Gmail) for correct sender info...")
-    #     pass
 
 
-    # METHOD 2: Fallback to SMTP (Requires Password)
-    # If the API keys aren't there or failed, try the old fashioned way (Gmail SMTP)
     print("\n[*] Falling back to standard SMTP (Gmail).")
     
     sender_email = SENDER_EMAIL
@@ -450,26 +422,20 @@ def send_email_report(recipient_email, ip, scan_results):
 
     context = ssl.create_default_context()
 
-    # HELPER: Force IPv4 Patch
     original_getaddrinfo = socket.getaddrinfo
     def ipv4_getaddrinfo(*args, **kwargs):
         responses = original_getaddrinfo(*args, **kwargs)
-        # Filter for IPv4 (AF_INET)
         return [r for r in responses if r[0] == socket.AF_INET]
     
-    # Enable Patch
     socket.getaddrinfo = ipv4_getaddrinfo
 
     try:
-        # DEBUG: Check Connectivity and Resolution
         print("--- DEBUG: Network Diagnostics ---")
         try:
-            # 1. Resolve Gmail
             resolved_ips = ipv4_getaddrinfo(SMTP_SERVER, 465, socket.AF_INET, socket.SOCK_STREAM)
             target_ip = resolved_ips[0][4][0]
             print(f"[*] Resolved {SMTP_SERVER} to IPv4: {target_ip}")
             
-            # 2. Check basic Internet (Google HTTP)
             print("[*] Checking basic internet access (google.com:80)...")
             socket.create_connection(("google.com", 80), timeout=5).close()
             print("[+] Internet is reachable.")
@@ -477,7 +443,6 @@ def send_email_report(recipient_email, ip, scan_results):
             print(f"[!] Diagnostics Failed: {diag_err}")
         print("----------------------------------")
 
-        # Attempt 1: Try Port 465 (SSL)
         try:
             print(f"[*] Attempting connection to {SMTP_SERVER}:465 (SSL)...")
             server = smtplib.SMTP_SSL(SMTP_SERVER, 465, context=context, timeout=8)
@@ -492,7 +457,6 @@ def send_email_report(recipient_email, ip, scan_results):
         except Exception as e1:
             print(f"[-] Port 465 failed: {e1}")
             
-            # Attempt 2: Try Port 587 (STARTTLS)
             try:
                 print(f"[*] Attempting connection to {SMTP_SERVER}:587 (STARTTLS)...")
                 server = smtplib.SMTP(SMTP_SERVER, 587, timeout=8)
@@ -509,7 +473,6 @@ def send_email_report(recipient_email, ip, scan_results):
             except Exception as e2:
                 print(f"[-] Port 587 failed: {e2}")
 
-                # Attempt 3: Try Port 2525 (STARTTLS) - The "Hail Mary"
                 try:
                     print(f"[*] Attempting connection to {SMTP_SERVER}:2525 (STARTTLS)...")
                     server = smtplib.SMTP(SMTP_SERVER, 2525, timeout=8)
@@ -524,11 +487,9 @@ def send_email_report(recipient_email, ip, scan_results):
                     socket.getaddrinfo = original_getaddrinfo
                     return True, "Email sent successfully via Port 2525!"
                 except Exception as e3:
-                     # All failed
                     raise e3
 
     except Exception as e:
-        # Restore patch in case of failure
         socket.getaddrinfo = original_getaddrinfo
         
         error_msg = f"Network Error. Diagnosed: {e}"
@@ -546,19 +507,16 @@ def main():
 
         scan_output = run_nmap_scan(target_ip)
         
-        # Generate simple report for preview
         simple_preview = generate_simplified_report(target_ip, scan_output)
 
-        # Display a summary or the full output to the console
         print("\n--- Scan output preview ---")
         print(simple_preview)
         print("---------------------------\n")
 
-        # Save to file (Raw output)
         output_file = f"{OUTPUT_DIR}/{target_ip}_vuln_report.txt"
         with open(output_file, "w") as f:
-            f.write(scan_output) # Save raw for technical reference
-            f.write("\n\n" + simple_preview) # Append simple version
+            f.write(scan_output)
+            f.write("\n\n" + simple_preview)
             
         print(f"[*] Full report saved locally to: {output_file}")
         
