@@ -1,8 +1,24 @@
+# Virtual Environment
 .venv/
 venv/
+env/
+
+# Python cache & compiled files
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Application Data & Secrets
 outputs/
 ips.txt
 config.yaml
+.env
 
+# System Files
+.DS_Store
+
+# Utility Scripts
+strip_comments.py
+test_email_config.py
+*.log
