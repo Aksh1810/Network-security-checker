@@ -248,6 +248,33 @@ def send_email_report(recipient_email, ip, scan_results):
     # Combined Body
     full_email_body = f"{simple_report}\n\n\n=== TECHNICAL RAW OUTPUT ===\n{scan_results}"
     
+    # METHOD -1: SendGrid (Recommended for Render)
+    SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
+    if SENDGRID_API_KEY:
+        print("[*] Attempting to send via SendGrid API...")
+        try:
+            from sendgrid import SendGridAPIClient
+            from sendgrid.helpers.mail import Mail
+
+            message = Mail(
+                from_email=SENDER_EMAIL,
+                to_emails=recipient_email,
+                subject=f"Simple Health Report: {ip}",
+                plain_text_content=full_email_body)
+            
+            sg = SendGridAPIClient(SENDGRID_API_KEY)
+            response = sg.send(message)
+            
+            if response.status_code >= 200 and response.status_code < 300:
+                print(f"[+] Email sent successfully via SendGrid! (Status: {response.status_code})")
+                logging.info(f"Email sent via SendGrid to {recipient_email}")
+                return True, "Email sent successfully via SendGrid API!"
+            else:
+                print(f"[-] SendGrid failed (Status {response.status_code})")
+        except Exception as e:
+            print(f"[-] Error trying to use SendGrid: {e}")
+            logging.error(f"SendGrid exception: {e}")
+
     # METHOD 0: Try Mailgun API (Best for Cloud/Render)
     if MAILGUN_API_KEY and MAILGUN_DOMAIN:
         print("[*] Attempting to send via Mailgun API...")
