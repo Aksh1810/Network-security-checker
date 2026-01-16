@@ -6,10 +6,7 @@ import os
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# Import functions from the existing script
-# Note: Since the filename is net-hc.py with a hyphen, we might need a workaround to import it,
-# but usually it's better to rename it. For now, I'll assume we can rename it or use importlib.
-# Actually, let's just use importlib to be safe given the hyphen.
+# Need to import the scanner script. Since it has a hyphen, we use this trick.
 import importlib.util
 spec = importlib.util.spec_from_file_location("net_hc", "net-hc.py")
 net_hc = importlib.util.module_from_spec(spec)
@@ -17,9 +14,9 @@ spec.loader.exec_module(net_hc)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    # Detect User IP (Handles proxies like Render/Heroku)
+    # Figure out the user's IP. Needed for cloud hosting like Render.
     user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    # If multiple IPs are present in X-Forwarded-For, take the first one
+    # Sometimes we get a list of IPs, just grab the first one.
     if user_ip and ',' in user_ip:
         user_ip = user_ip.split(',')[0].strip()
 
@@ -31,7 +28,7 @@ def index():
             flash('Please provide both IP and Email.')
             return redirect(url_for('index'))
         
-        # Start scanning in a background thread to avoid timeout
+        # Run the scan in the background so the page doesn't freeze.
         thread = threading.Thread(target=run_async_scan, args=(ip, email))
         thread.start()
         
@@ -41,16 +38,13 @@ def index():
     return render_template('index.html', user_ip=user_ip)
 
 def run_async_scan(ip, email):
-    """
-    Runs the scan and sends email in the background.
-    """
+    # This runs quietly in the background.
     print(f"Background task: Scanning {ip} for {email}")
     try:
-        # Run the Nmap Scan
+        # Kick off the Nmap scan
         scan_output = net_hc.run_nmap_scan(ip)
         
-        # Checking if the function signature matches what we have in net-hc.py
-        # net-hc.py: send_email_report(recipient_email, ip, scan_results)
+        # Send the results via email using the function in net-hc.py
         net_hc.send_email_report(email, ip, scan_output)
         print("Background task: Finished and emailed.")
         
@@ -65,11 +59,10 @@ def test_email():
     if email:
         print(f"Sending test email to {email}...")
         try:
-            # Send a dummy report to verify connectivity
-            # net_hc.send_email_report now returns (success, message)
+            # Just sending a quick test message to make sure email works.
             result = net_hc.send_email_report(email, "TEST_CONNECTION", "This is a quick test from the Network Health Checker.")
             
-            # Handle both return types (bool or tuple) safely
+            # Handle the result, whether it's a tuple or just a boolean.
             if isinstance(result, tuple):
                 success, msg = result
             else:

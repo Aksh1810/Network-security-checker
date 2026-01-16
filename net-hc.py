@@ -8,7 +8,6 @@ import socket
 from email.message import EmailMessage
 import yaml
 
-# Load config from YAML if it exists
 def load_config():
     config_path = os.path.join(os.getcwd(), 'config.yaml')
     if os.path.exists(config_path):
@@ -19,13 +18,10 @@ def load_config():
 CONFIG = load_config()
 MS = CONFIG.get('mail_settings', {})
 
-# Configuration for Email
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', MS.get('email', 'networksecscanner@gmail.com'))
 SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD', MS.get('password', 'nrep tddh kksq isnp'))
 SMTP_SERVER = os.environ.get('SMTP_SERVER', MS.get('smtp_server', 'smtp.gmail.com'))
 SMTP_PORT = int(os.environ.get('SMTP_PORT', MS.get('smtp_port', 587)))
-
-# Mailgun Configuration (Alternative for Render/Cloud)
 MAILGUN_API_KEY = os.environ.get('MAILGUN_API_KEY', MS.get('mailgun_api_key'))
 MAILGUN_DOMAIN = os.environ.get('MAILGUN_DOMAIN', MS.get('mailgun_domain'))
 import requests
@@ -35,7 +31,6 @@ CURRENT_DIR = os.getcwd()
 OUTPUT_DIR = f'{CURRENT_DIR}/outputs'
 LOG_OUTPUT_PATH = f'{OUTPUT_DIR}/logs.txt'
 
-# Ensure output directory exists
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -43,16 +38,13 @@ logging.basicConfig(filename=LOG_OUTPUT_PATH, level=LOG_LEVEL,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 def get_passive_info(ip):
-    """
-    Gathers info about an IP/Domain without using Nmap.
-    Uses public API (ip-api.com) and basic socket checks.
-    """
+    # This tries to get info about a target without poking it too hard (no nmap).
+    # Good for when the active scan gets blocked.
     print(f"[*] Gathering passive info for {ip}...")
     results = {"ip": ip, "passive_data": {}, "dns": {}, "connectivity": {}}
     
-    # 1. IP-API lookup (Passive Geolocation & ISP)
     try:
-        # If it's a hostname, resolve it first
+        # Check where this IP is located physically using a public API
         resolved_ip = socket.gethostbyname(ip)
         response = requests.get(f"http://ip-api.com/json/{resolved_ip}", timeout=5)
         if response.status_code == 200:
@@ -60,7 +52,7 @@ def get_passive_info(ip):
     except Exception as e:
         results["passive_data"] = {"error": str(e)}
 
-    # 2. Basic Socket Connectivity (Check common ports 80, 443, etc.)
+    # Check a few common ports "quietly" to see if anything is obviously open
     common_ports = [80, 443, 21, 22, 25, 53, 3306, 5000, 8000, 8080]
     open_ports = []
     print(f"[*] Checking common ports (80, 443, etc.) via stealth connection...")
@@ -118,17 +110,17 @@ def run_nmap_scan(ip):
     print("    This process may take several minutes. Please wait...")
     logging.info(f"Starting nmap scan for {ip}")
     
-    # Command explanation:
-    # -sV: Probe open ports to determine service/version info
-    # --script=vuln: Run standard vulnerability detection scripts
+    # Run NMap! 
+    # -sV tries to identify versions of services
+    # --script=vuln runs a bunch of scripts to check for known vulnerabilities
     command = ["nmap", "-sV", "--script=vuln", ip]
     
     try:
-        # 15 minute timeout to prevent hanging indefinitely
+        # Give it 15 minutes max, otherwise kill it so it doesn't hang forever.
         result = subprocess.run(command, capture_output=True, text=True, timeout=900)
         
         if result.returncode != 0:
-            # If Nmap fails, try Passive Scan as fallback
+            # If nmap crashed or failed, try the passive scan instead.
             print("[!] Nmap scan failed. Falling back to Passive Discovery...")
             passive_data = get_passive_info(ip)
             return format_passive_report(ip, passive_data)
@@ -157,22 +149,17 @@ def generate_simplified_report(ip, nmap_output):
     open_ports = []
     vulnerabilities = []
     
-    # Basic parsing logic
     is_capturing_ports = False
     for line in lines:
-        # Check for port table header
         if "PORT" in line and "STATE" in line and "SERVICE" in line:
             is_capturing_ports = True
             continue
         
-        # Stop capturing if we hit a blank line or a different section
         if is_capturing_ports and (not line.strip() or line.startswith("|") or line.startswith("SF:")):
-            # Check for vulnerability text in the detail lines
             if "VULNERABLE" in line or "CVE-" in line:
                 vulnerabilities.append(line.strip())
             continue
             
-        # Capture standard port lines (digits followed by /protocol)
         if is_capturing_ports and "/tcp" in line and "open" in line:
             parts = line.split()
             if len(parts) >= 3:
@@ -180,10 +167,9 @@ def generate_simplified_report(ip, nmap_output):
                 service = parts[2]
                 version = " ".join(parts[3:]) if len(parts) > 3 else "Unknown"
                 open_ports.append({'port': port, 'service': service, 'version': version})
-        elif "VULNERABLE:" in line: # Catch explicit vuln script headers outside the loop logic above
+        elif "VULNERABLE:" in line: 
              vulnerabilities.append(line.strip())
 
-    # Generate the human-readable text
     report = f"""
 ==================================================================
               SIMPLE NETWORK HEALTH REPORT
@@ -206,7 +192,6 @@ We analyzed your network device at {ip}.
         report += "\nWHAT WE FOUND\n-------------\n"
         for item in open_ports:
             report += f"• Port {item['port']} is OPEN running '{item['service']}'.\n"
-            # Add simple explanations for common ports
             if "http" in item['service']:
                 report += "  -> This usually means a website or web interface is hosted here.\n"
             elif "rtsp" in item['service']:
@@ -384,6 +369,7 @@ def send_email_report(recipient_email, ip, scan_results):
     full_email_body = f"{simple_report}\n\n\n=== TECHNICAL RAW OUTPUT ===\n{scan_results}"
     
     # METHOD -1: SendGrid (Recommended for Render)
+    # This is the best way to send email from the cloud properly.
     SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
     if SENDGRID_API_KEY:
         print("[*] Attempting to send via SendGrid API...")
@@ -445,6 +431,7 @@ def send_email_report(recipient_email, ip, scan_results):
 
 
     # METHOD 2: Fallback to SMTP (Requires Password)
+    # If the API keys aren't there or failed, try the old fashioned way (Gmail SMTP)
     print("\n[*] Falling back to standard SMTP (Gmail).")
     
     sender_email = SENDER_EMAIL
