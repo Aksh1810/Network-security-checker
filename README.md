@@ -8,36 +8,39 @@ The primary goal of this project is to make network security monitoring accessib
 
 ## ✨ Key Features
 
--   **Interactive Web Interface:** A clean, responsive web UI for easy interaction.
--   **Automated Scanning:** Powered by the `nmap` engine to perform deep analysis of network devices.
--   **Smart Reporting:** Automatically parses technical port data into friendly descriptions (e.g., explaining that "Port 80" means a web server).
--   **Email Alerts:** Delivers beautiful, color-coded HTML health reports directly to your inbox.
--   **Cloud Ready:** Deployed and running on the cloud for anytime access.
+-   **Three Powerful Scan Modes:**
+    -   🛡️ **Network Device Scan:** Deep vulnerability scan for servers, routers, and IoT devices (`nmap -sV --script=vuln`).
+    -   🌐 **Website & App Scan:** Targeted scan for web headers, SSL issues, and web vulnerabilities.
+    -   ⚡ **Quick Security Check:** Fast audit of the top 100 most common ports.
+-   **Live Progress Tracking:** Real-time loading screen that updates as the scan progresses.
+-   **Instant Web Reports:** View technical results directly in your browser immediately after the scan completes.
+-   **On-Demand Email Reports:** Option to send a beautiful, non-technical HTML summary to your inbox after reviewing the results.
+-   **Human-Readable Analysis:** Automatically parses technical port data into friendly descriptions (e.g., "Open Port 80" -> "Web Website").
 
 ## 📖 How to Use
 
-Using the scanner is simple designed to be intuitive:
+Using the scanner is simple and intuitive:
 
-1.  **Access the Interface:** Open the web application in your browser.
-2.  **Enter Target:** Input the **IP Address** or **Domain Name** of the device you want to scan.
-3.  **Enter Email:** Provide the email address where you want to receive the final report.
-4.  **Start Scan:** Click the submit button. The system will start a background scan (this typically takes 2-5 minutes depending on the target's security).
-5.  **Check Your Email:** Once finished, you will receive a detailed report.
+1.  **Enter Target:** Input the IP address or domain name you wish to scan.
+2.  **Select Mode:** Choose the scan type that matches your target (Network, Web, or Quick Check).
+3.  **Run Scan:** The system will process the scan in the background (typically 2-5 minutes).
+4.  **View Results:** See the raw technical output instantly on the results page.
+5.  **Get Report:** (Optional) Enter your email to receive a polished, easy-to-read HTML report for your records.
 
-> **⚠️ Important Check:** Since this is an automated security tool, email providers often filter these reports. **Please check your Spam or Junk folder** if you do not see the email in your main inbox.
+> **⚠️ Note:** If you request an email report, please check your **Spam or Junk folder** as automated security reports are sometimes filtered by providers.
 
 ## 🛠️ Technology Stack
 
 -   **Backend:** Python 3, Flask
 -   **Scanning Engine:** Nmap (Active Scanning)
 -   **Email Engine:** SendGrid API
--   **Frontend:** HTML5, CSS3
+-   **Frontend:** HTML5, CSS3, JavaScript (Polling)
 
 ## 📊 Example Output
 
-The user receives a report that looks like this:
+The email report transforms complex data into a clear summary:
 
-> **Status:** Action Required (Red)
+> **Status:** Action Required (Red Status Card)
 >
 > **What We Found:**
 > - **Port 80 (HTTP):** Web Website/Interface
