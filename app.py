@@ -20,23 +20,24 @@ def index():
     if request.method == 'POST':
         ip = request.form.get('ip')
         email = request.form.get('email')
+        scan_type = request.form.get('scan_type', 'network')
         
         if not ip or not email:
             flash('Please provide both IP and Email.')
             return redirect(url_for('index'))
         
-        thread = threading.Thread(target=run_async_scan, args=(ip, email))
+        thread = threading.Thread(target=run_async_scan, args=(ip, email, scan_type))
         thread.start()
         
-        flash(f'Scan started for {ip}! Results will be sent to {email}.')
+        flash(f'{scan_type.capitalize()} scan started for {ip}! Results will be sent to {email}.')
         return redirect(url_for('index'))
         
     return render_template('index.html', user_ip=user_ip)
 
-def run_async_scan(ip, email):
-    print(f"Background task: Scanning {ip} for {email}")
+def run_async_scan(ip, email, scan_type='network'):
+    print(f"Background task: Starting {scan_type} scan on {ip} for {email}")
     try:
-        scan_output = net_hc.run_nmap_scan(ip)
+        scan_output = net_hc.run_nmap_scan(ip, scan_type=scan_type)
         
         net_hc.send_email_report(email, ip, scan_output)
         print("Background task: Finished and emailed.")

@@ -101,12 +101,17 @@ def get_user_input():
     email = input("2. Enter your email to receive results: ").strip()
     return ip, email
 
-def run_nmap_scan(ip):
-    print(f"\n[*] Starting vulnerability scan for target: {ip}")
+def run_nmap_scan(ip, scan_type='network'):
+    print(f"\n[*] Starting {scan_type} scan for target: {ip}")
     print("    This process may take several minutes. Please wait...")
-    logging.info(f"Starting nmap scan for {ip}")
+    logging.info(f"Starting {scan_type} scan for {ip}")
     
-    command = ["nmap", "-sV", "--script=vuln", ip]
+    if scan_type == 'web':
+        command = ["nmap", "-p", "80,443,8080", "-sV", "--script=http-vuln*,http-headers,http-title,ssl-cert", ip]
+    elif scan_type == 'specialty':
+        command = ["nmap", "-F", "-sV", "--version-light", ip]
+    else:
+        command = ["nmap", "-sV", "--script=vuln", ip]
     
     try:
         result = subprocess.run(command, capture_output=True, text=True, timeout=900)
