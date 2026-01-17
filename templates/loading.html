@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Refresh page every 3 seconds to check status -->
+    <meta http-equiv="refresh" content="3">
+    <title>Scanning...</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .status-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="status-box">
+        <div class="spinner" style="margin: 0 auto 20px auto;"></div>
+        <h2>Running {{ scan_type|capitalize }} Scan...</h2>
+        <p>Please wait. This may take 2-5 minutes.</p>
+        <p style="color: #6b7280; font-size: 0.9rem;">Target: {{ ip }}</p>
+        <p style="color: #6b7280; font-size: 0.8rem;">Do not refresh or close this page.</p>
+    </div>
+</body>
+
+</html>
