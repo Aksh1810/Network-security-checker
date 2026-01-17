@@ -99,50 +99,107 @@
         {% endif %}
         {% endwith %}
 
-        <form method="POST">
+        <style>
+            .dynamic-input {
+                display: none;
+            }
+
+            .dynamic-input.active {
+                display: block;
+            }
+        </style>
+
+        <form method="POST" id="scan-form">
             <div class="form-group">
-                <label for="ip">Target IP Address</label>
-                <input type="text" id="ip" name="ip" placeholder="e.g. 192.168.1.1" required>
+                <label style="font-size: 1.1rem; margin-bottom: 15px;">1. What would you like to scan?</label>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label
+                        style="font-weight: normal; background: #f9f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s;"
+                        onclick="showInput('network')">
+                        <div style="display:flex; align-items:center;">
+                            <input type="radio" name="scan_type" value="network" checked>
+                            <strong style="margin-left: 10px; font-size: 1rem;">Network Device</strong>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #666; margin-left: 28px; margin-top: 5px;">Routers,
+                            Servers, IoT Devices. (Deep Port Scan)</div>
+                    </label>
+
+                    <label
+                        style="font-weight: normal; background: #f9f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s;"
+                        onclick="showInput('web')">
+                        <div style="display:flex; align-items:center;">
+                            <input type="radio" name="scan_type" value="web">
+                            <strong style="margin-left: 10px; font-size: 1rem;">Website or Web App</strong>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #666; margin-left: 28px; margin-top: 5px;">Public URL.
+                            (Checks SSL, Headers, Web Vulns)</div>
+                    </label>
+
+                    <label
+                        style="font-weight: normal; background: #f9f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s;"
+                        onclick="showInput('specialty')">
+                        <div style="display:flex; align-items:center;">
+                            <input type="radio" name="scan_type" value="specialty">
+                            <strong style="margin-left: 10px; font-size: 1rem;">Quick Health Check</strong>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #666; margin-left: 28px; margin-top: 5px;">Fast audit of
+                            your current connection.</div>
+                    </label>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+
+            <div class="form-group dynamic-input active" id="input-network">
+                <label for="ip-network">2. Enter the Target IP Address</label>
+                <input type="text" id="ip-network" name="ip" placeholder="e.g. 192.168.1.1">
                 {% if user_ip %}
                 <div style="margin-top: 5px; font-size: 0.85rem; color: #4b5563;">
-                    Your detected IP: <strong id="detected-ip">{{ user_ip }}</strong>
-                    <a href="#" onclick="document.getElementById('ip').value = '{{ user_ip }}'; return false;"
+                    Your detected IP: <strong>{{ user_ip }}</strong>
+                    <a href="#" onclick="document.getElementById('ip-network').value = '{{ user_ip }}'; return false;"
                         style="color: #2563eb; margin-left: 5px;">(Use this)</a>
                 </div>
                 {% endif %}
             </div>
 
-            <!-- Email removed from here, moved to results page -->
-
-            <div class="form-group">
-                <label>Scan Type</label>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <label
-                        style="font-weight: normal; background: #f9f9fa; padding: 10px; border-radius: 5px; border: 1px solid #e5e7eb; cursor: pointer;">
-                        <input type="radio" name="scan_type" value="network" checked>
-                        <strong>Network Device Scan</strong>
-                        <div style="font-size: 0.8rem; color: #666; margin-left: 20px;">Deep vulnerability scan of all
-                            services (Nmap).</div>
-                    </label>
-                    <label
-                        style="font-weight: normal; background: #f9f9fa; padding: 10px; border-radius: 5px; border: 1px solid #e5e7eb; cursor: pointer;">
-                        <input type="radio" name="scan_type" value="web">
-                        <strong>Website & App Scan</strong>
-                        <div style="font-size: 0.8rem; color: #666; margin-left: 20px;">Checks SSL, headers, and common
-                            web vulnerabilities.</div>
-                    </label>
-                    <label
-                        style="font-weight: normal; background: #f9f9fa; padding: 10px; border-radius: 5px; border: 1px solid #e5e7eb; cursor: pointer;">
-                        <input type="radio" name="scan_type" value="specialty">
-                        <strong>Quick Security Check</strong>
-                        <div style="font-size: 0.8rem; color: #666; margin-left: 20px;">Fast audit of top ports & basic
-                            security posture.</div>
-                    </label>
-                </div>
+            <div class="form-group dynamic-input" id="input-web">
+                <label for="ip-web">2. Enter the Website URL</label>
+                <input type="text" id="ip-web" placeholder="e.g. google.com or https://mysite.com">
+                <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">We will resolve this to an IP automatically.
+                </p>
             </div>
 
-            <button type="submit">Run Scan</button>
+            <div class="form-group dynamic-input" id="input-specialty">
+                <label for="ip-specialty">2. Target for Quick Check</label>
+                <input type="text" id="ip-specialty" placeholder="IP Address (e.g. {{ user_ip or '1.1.1.1' }})">
+            </div>
+
+            <button type="submit" onclick="prepareSubmission()">Run Scan</button>
         </form>
+
+        <script>
+            function showInput(type) {
+                // Hide all inputs
+                document.querySelectorAll('.dynamic-input').forEach(el => el.classList.remove('active'));
+                // Show selected input
+                document.getElementById('input-' + type).classList.add('active');
+            }
+
+            function prepareSubmission() {
+                // Copy value from the visible input to the main 'ip' field if needed
+                // actually we reused 'name="ip"' for the first one for simplicity, 
+                // but let's just sync them to be safe before submit.
+                const type = document.querySelector('input[name="scan_type"]:checked').value;
+                const visibleInput = document.getElementById('input-' + type);
+
+                // We need to ensure the backend receives "ip"
+                // Let's create a hidden input if it doesn't exist, or update the main one.
+                // Simpler: Just make sure the correct input has name="ip" before submit.
+
+                document.querySelectorAll('input[type="text"]').forEach(el => el.removeAttribute('name'));
+                visibleInput.setAttribute('name', 'ip');
+            }
+        </script>
 
         <div class="note">
             Scanning usually takes 2-5 minutes. <br>
