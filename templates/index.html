@@ -44,6 +44,13 @@
 
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         .cursor { animation: blink 1s step-end infinite; }
+
+        @keyframes pulse-ring {
+            0%   { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.35); }
+            70%  { box-shadow: 0 0 0 16px rgba(0, 255, 136, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+        }
+        .pulse-ring { animation: pulse-ring 2s ease-out infinite; }
     </style>
 </head>
 <body class="bg-base text-primary font-mono min-h-screen flex flex-col items-center justify-center p-4">
@@ -153,5 +160,20 @@
         </p>
 
     </div>
+
+    <!-- Overlay shown while synchronous scan runs (no-nmap/Vercel path) -->
+    <div id="scan-overlay" class="hidden fixed inset-0 bg-base/90 flex flex-col items-center justify-center z-50">
+        <div class="pulse-ring w-16 h-16 rounded-full flex items-center justify-center mb-6">
+            <div class="w-12 h-12 rounded-full border-4 border-border border-t-accent animate-spin"></div>
+        </div>
+        <p class="text-accent text-sm tracking-widest mb-2">SCANNING...</p>
+        <p class="text-muted text-xs">This may take a few seconds. Do not close this tab.</p>
+    </div>
+
+    <script>
+        document.querySelector('form').addEventListener('submit', function() {
+            document.getElementById('scan-overlay').classList.remove('hidden');
+        });
+    </script>
 </body>
 </html>

@@ -173,10 +173,14 @@
                         Save a formatted HTML report — open it in any browser or print to PDF.
                     </p>
                 </div>
-                <a href="{{ url_for('download_report', scan_id=scan_id) }}"
-                   class="px-4 py-2 bg-accent hover:bg-accent-dim text-base font-bold text-sm rounded transition-colors duration-150 whitespace-nowrap">
-                    ↓ Download
-                </a>
+                <form method="POST" action="/download-report">
+                    <input type="hidden" name="ip" value="{{ ip }}">
+                    <textarea name="scan_output" style="display:none">{{ scan_output }}</textarea>
+                    <button type="submit"
+                            class="px-4 py-2 bg-accent hover:bg-accent-dim text-base font-bold text-sm rounded transition-colors duration-150 whitespace-nowrap cursor-pointer">
+                        ↓ Download
+                    </button>
+                </form>
             </div>
         </div>
 

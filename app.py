@@ -1,6 +1,7 @@
 import datetime
 import ipaddress
 import re
+import shutil
 import threading
 import uuid
 
@@ -14,6 +15,8 @@ app.secret_key = __import__('os').urandom(24)
 
 # In-memory scan state: {scan_id: {status, ip, scan_type, output, started_at, _proc_store}}
 scans = {}
+
+NMAP_AVAILABLE = bool(shutil.which('nmap'))
 
 _HOSTNAME_RE = re.compile(
     r'^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$'
@@ -48,19 +51,39 @@ def index():
 
         scan_id = str(uuid.uuid4())
 
-        scans[scan_id] = {
-            'status': 'running',
-            'ip': ip,
-            'scan_type': scan_type,
-            'output': None,
-            'started_at': datetime.datetime.now().isoformat(timespec='seconds'),
-            '_proc_store': [],
-        }
+        if NMAP_AVAILABLE:
+            scans[scan_id] = {
+                'status': 'running',
+                'ip': ip,
+                'scan_type': scan_type,
+                'output': None,
+                'started_at': datetime.datetime.now().isoformat(timespec='seconds'),
+                '_proc_store': [],
+            }
+            thread = threading.Thread(
+                target=_run_background_scan, args=(scan_id, ip, scan_type), daemon=True
+            )
+            thread.start()
+            return redirect(url_for('view_scan', scan_id=scan_id))
 
-        thread = threading.Thread(target=_run_background_scan, args=(scan_id, ip, scan_type), daemon=True)
-        thread.start()
-
-        return redirect(url_for('view_scan', scan_id=scan_id))
+        # Vercel / no-nmap path: run synchronously, render result inline
+        from scanner.socket_scanner import run_socket_scan
+        try:
+            output   = run_socket_scan(ip, scan_type)
+            is_error = False
+        except Exception as e:
+            output   = str(e)
+            is_error = True
+        parsed = parse_nmap_output(output) if not is_error else None
+        return render_template(
+            'result.html',
+            scan_output=output,
+            parsed=parsed,
+            ip=ip,
+            scan_type=scan_type,
+            scan_id=scan_id,
+            is_error=is_error,
+        )
 
     return render_template('index.html', user_ip=user_ip)
 
@@ -118,6 +141,20 @@ def download_report(scan_id):
         html,
         mimetype='text/html',
         headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+
+
+@app.route('/download-report', methods=['POST'])
+def download_report_post():
+    """Stateless download — works on Vercel where scan state doesn't persist."""
+    ip     = request.form.get('ip', 'unknown')
+    output = request.form.get('scan_output', '')
+    html   = generate_html_report(ip, output)
+    fname  = f"nhc-report-{ip.replace('.', '-')}.html"
+    return Response(
+        html,
+        mimetype='text/html',
+        headers={'Content-Disposition': f'attachment; filename="{fname}"'},
     )
 
 
