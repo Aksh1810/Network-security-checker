@@ -71,6 +71,18 @@
             <a href="/" class="text-accent hover:text-accent-dim text-sm transition-colors">← New Scan</a>
         </div>
 
+        {% if is_error %}
+        <!-- Error state -->
+        <div class="bg-surface border border-red-800 rounded-lg p-6 mb-6">
+            <div class="flex items-start gap-3">
+                <span class="text-red-400 text-lg mt-0.5">✗</span>
+                <div>
+                    <h3 class="text-red-400 font-bold text-sm mb-2">Scan Failed</h3>
+                    <p class="text-muted text-xs leading-relaxed">{{ scan_output }}</p>
+                </div>
+            </div>
+        </div>
+        {% else %}
         <!-- Terminal output -->
         <div class="bg-surface border border-border rounded-lg mb-6 overflow-hidden">
             <div class="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-base">
@@ -113,6 +125,7 @@
             </form>
             <p class="text-muted text-xs mt-3">Check your spam folder if the email doesn't arrive within a few minutes.</p>
         </div>
+        {% endif %}
 
     </div>
 </body>

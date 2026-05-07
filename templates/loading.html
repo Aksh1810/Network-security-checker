@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="3">
     <title>Scanning...</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -72,14 +71,30 @@
             </div>
 
             <p class="text-muted text-xs leading-relaxed">
-                This may take a few minutes.<br>Do not close this tab.
+                This may take a few minutes. Do not close this tab.
             </p>
         </div>
 
         <p class="text-center text-muted/50 text-xs mt-4 tracking-widest">
-            AUTO-REFRESH EVERY 3s
+            CHECKING STATUS EVERY 3s
         </p>
 
     </div>
+
+    <script>
+        const scanId = "{{ scan_id }}";
+        async function poll() {
+            try {
+                const res  = await fetch(`/scan/${scanId}/status`);
+                const data = await res.json();
+                if (data.status !== 'running') {
+                    window.location.href = `/scan/${scanId}`;
+                }
+            } catch (_) {
+                // network hiccup — keep polling
+            }
+        }
+        setInterval(poll, 3000);
+    </script>
 </body>
 </html>
