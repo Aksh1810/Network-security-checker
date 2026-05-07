@@ -1,150 +1,155 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Network Vulnerability Scanner</title>
+    <title>Network Health Checker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        base: '#0d1117',
+                        surface: '#161b22',
+                        border: '#30363d',
+                        accent: '#00ff88',
+                        'accent-dim': '#00cc6a',
+                        primary: '#e6edf3',
+                        muted: '#8b949e',
+                    },
+                    fontFamily: {
+                        mono: ['"JetBrains Mono"', '"Fira Code"', 'Consolas', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #f3f4f6;
-            color: #1f2937;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-        .container {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
+        .scan-card input[type="radio"] { display: none; }
+        .scan-card:has(input:checked) {
+            border-color: #00ff88;
+            background-color: #0d2a1a;
         }
+        .scan-card:has(input:checked) .card-dot {
+            background-color: #00ff88;
+            box-shadow: 0 0 8px #00ff88;
+        }
+        .scan-card:has(input:checked) .card-title { color: #00ff88; }
 
-        h1 {
-            text-align: center;
-            color: #111827;
-            margin-bottom: 1.5rem;
-            font-size: 1.5rem;
-        }
+        input[type="text"]:focus { outline: none; box-shadow: 0 0 0 2px #00ff88; }
 
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-
-        input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
-
-        button {
-            width: 100%;
-            padding: 0.75rem;
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        button:hover {
-            background-color: #1d4ed8;
-        }
-
-        .message {
-            margin-top: 1rem;
-            padding: 0.75rem;
-            border-radius: 5px;
-            background-color: #d1fae5;
-            color: #065f46;
-            text-align: center;
-        }
-
-        .note {
-            margin-top: 1rem;
-            font-size: 0.8rem;
-            color: #6b7280;
-            text-align: center;
-        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        .cursor { animation: blink 1s step-end infinite; }
     </style>
 </head>
+<body class="bg-base text-primary font-mono min-h-screen flex flex-col items-center justify-center p-4">
 
-<body>
-    <div class="container">
-        <h1>🛡️ Network Vulnerability Scanner</h1>
+    <div class="w-full max-w-md">
 
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <div class="text-3xl font-bold tracking-widest">
+                <span class="text-accent">[</span>NHC<span class="text-accent">]</span>
+            </div>
+            <p class="text-muted text-sm mt-1 tracking-wider">NETWORK HEALTH CHECKER</p>
+        </div>
+
+        <!-- Flash messages -->
         {% with messages = get_flashed_messages() %}
         {% if messages %}
         {% for message in messages %}
-        <div class="message">{{ message }}</div>
+        <div class="mb-4 px-4 py-3 rounded border border-yellow-600 bg-yellow-900/30 text-yellow-300 text-sm">
+            <span class="text-yellow-500">⚠</span> {{ message }}
+        </div>
         {% endfor %}
         {% endif %}
         {% endwith %}
 
-        <form method="POST">
-            <div class="form-group">
-                <label for="ip">Target IP Address</label>
-                <input type="text" id="ip" name="ip" placeholder="e.g. 192.168.1.1" required>
-                {% if user_ip %}
-                <div style="margin-top: 5px; font-size: 0.85rem; color: #4b5563;">
-                    Your detected IP: <strong id="detected-ip">{{ user_ip }}</strong>
-                    <a href="#" onclick="document.getElementById('ip').value = '{{ user_ip }}'; return false;"
-                        style="color: #2563eb; margin-left: 5px;">(Use this)</a>
+        <!-- Card -->
+        <div class="bg-surface border border-border rounded-lg p-6">
+
+            <form method="POST">
+
+                <!-- Target input -->
+                <div class="mb-5">
+                    <label class="block text-xs text-muted uppercase tracking-widest mb-2">Target</label>
+                    <div class="flex items-center bg-base border border-border rounded px-3 py-2 gap-2 transition-all">
+                        <span class="text-accent text-sm select-none">$</span>
+                        <input
+                            type="text"
+                            id="ip"
+                            name="ip"
+                            placeholder="192.168.1.1 or domain.com"
+                            required
+                            class="flex-1 bg-transparent text-primary placeholder-muted text-sm focus:outline-none"
+                        >
+                    </div>
+                    {% if user_ip %}
+                    <div class="mt-2 flex items-center gap-2 text-xs text-muted">
+                        <span>Detected:</span>
+                        <code class="text-accent/80">{{ user_ip }}</code>
+                        <button
+                            type="button"
+                            onclick="document.getElementById('ip').value = '{{ user_ip }}'"
+                            class="text-accent hover:text-accent-dim underline underline-offset-2 transition-colors"
+                        >use this</button>
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
-            </div>
 
-            <div class="form-group">
-                <label>Scan Type</label>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <label
-                        style="font-weight: normal; background: #f9f9fa; padding: 10px; border-radius: 5px; border: 1px solid #e5e7eb; cursor: pointer;">
-                        <input type="radio" name="scan_type" value="network" checked>
-                        <strong>Network Device Scan</strong>
-                        <div style="font-size: 0.8rem; color: #666; margin-left: 20px;">Deep vulnerability scan of all
-                            services (Nmap).</div>
-                    </label>
-                    <label
-                        style="font-weight: normal; background: #f9f9fa; padding: 10px; border-radius: 5px; border: 1px solid #e5e7eb; cursor: pointer;">
-                        <input type="radio" name="scan_type" value="web">
-                        <strong>Website & App Scan</strong>
-                        <div style="font-size: 0.8rem; color: #666; margin-left: 20px;">Checks SSL, headers, and common
-                            web vulnerabilities.</div>
-                    </label>
-                    <label
-                        style="font-weight: normal; background: #f9f9fa; padding: 10px; border-radius: 5px; border: 1px solid #e5e7eb; cursor: pointer;">
-                        <input type="radio" name="scan_type" value="specialty">
-                        <strong>Quick Security Check</strong>
-                        <div style="font-size: 0.8rem; color: #666; margin-left: 20px;">Fast audit of top ports & basic
-                            security posture.</div>
-                    </label>
+                <!-- Scan type -->
+                <div class="mb-6">
+                    <label class="block text-xs text-muted uppercase tracking-widest mb-3">Scan Mode</label>
+                    <div class="flex flex-col gap-2">
+
+                        <label class="scan-card flex items-start gap-3 bg-base border border-border rounded p-3 cursor-pointer transition-all duration-150">
+                            <input type="radio" name="scan_type" value="network" checked>
+                            <span class="card-dot mt-1 w-2.5 h-2.5 rounded-full bg-border flex-shrink-0 transition-all duration-150"></span>
+                            <div>
+                                <div class="card-title text-sm font-bold text-primary transition-colors duration-150">Network Device Scan</div>
+                                <div class="text-xs text-muted mt-0.5">Deep vulnerability scan of all services via Nmap. Slow but thorough.</div>
+                            </div>
+                        </label>
+
+                        <label class="scan-card flex items-start gap-3 bg-base border border-border rounded p-3 cursor-pointer transition-all duration-150">
+                            <input type="radio" name="scan_type" value="web">
+                            <span class="card-dot mt-1 w-2.5 h-2.5 rounded-full bg-border flex-shrink-0 transition-all duration-150"></span>
+                            <div>
+                                <div class="card-title text-sm font-bold text-primary transition-colors duration-150">Website &amp; App Scan</div>
+                                <div class="text-xs text-muted mt-0.5">Checks SSL, HTTP headers, and common web vulnerabilities on ports 80/443.</div>
+                            </div>
+                        </label>
+
+                        <label class="scan-card flex items-start gap-3 bg-base border border-border rounded p-3 cursor-pointer transition-all duration-150">
+                            <input type="radio" name="scan_type" value="specialty">
+                            <span class="card-dot mt-1 w-2.5 h-2.5 rounded-full bg-border flex-shrink-0 transition-all duration-150"></span>
+                            <div>
+                                <div class="card-title text-sm font-bold text-primary transition-colors duration-150">Quick Security Check</div>
+                                <div class="text-xs text-muted mt-0.5">Fast audit of top 100 ports. Best for a quick security posture overview.</div>
+                            </div>
+                        </label>
+
+                    </div>
                 </div>
-            </div>
 
-            <button type="submit">Run Scan</button>
-        </form>
+                <!-- Submit -->
+                <button
+                    type="submit"
+                    class="w-full bg-accent hover:bg-accent-dim text-base font-bold py-3 rounded tracking-widest uppercase text-sm transition-colors duration-150 cursor-pointer"
+                >
+                    ▶ Run Scan
+                </button>
 
-        <div class="note">
-            Scanning usually takes 2-5 minutes. <br>
-            Please keep the window open.
+            </form>
         </div>
+
+        <p class="text-center text-muted text-xs mt-4">
+            Scans typically take 2–5 minutes<span class="cursor">_</span>
+        </p>
+
     </div>
 </body>
-
 </html>
