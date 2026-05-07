@@ -40,9 +40,8 @@ def run_nmap_scan(ip, scan_type='network', proc_store=None):
         return stdout
 
     except FileNotFoundError:
-        msg = "Error: 'nmap' command not found. Please ensure nmap is installed and in your PATH."
-        logging.error(msg)
-        return msg
+        logging.error("nmap binary not found")
+        raise RuntimeError("nmap is not installed or not on PATH.")
     except Exception as e:
         msg = f"An unexpected error occurred: {str(e)}"
         logging.error(msg)
