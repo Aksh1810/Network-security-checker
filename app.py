@@ -4,11 +4,10 @@ import re
 import threading
 import uuid
 
-from flask import Flask, jsonify, redirect, render_template, request, flash, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, flash, url_for
 
 from scanner.nmap import run_nmap_scan
-from scanner.email import send_email_report
-from scanner.reports import parse_nmap_output
+from scanner.reports import parse_nmap_output, generate_html_report
 
 app = Flask(__name__)
 app.secret_key = __import__('os').urandom(24)
@@ -108,21 +107,18 @@ def cancel_scan(scan_id):
     return jsonify({'ok': True})
 
 
-@app.route('/scan/<scan_id>/email', methods=['POST'])
-def send_report_email(scan_id):
-    email = request.form.get('email')
-    data  = scans.get(scan_id)
-
+@app.route('/scan/<scan_id>/report')
+def download_report(scan_id):
+    data = scans.get(scan_id)
     if not data or data['status'] != 'completed':
-        return "Scan data not found or not yet complete.", 404
-
-    try:
-        success, msg = send_email_report(email, data['ip'], data['output'])
-        flash(f"{'SUCCESS' if success else 'ERROR'}: {msg}")
-    except Exception as e:
-        flash(f"ERROR: Error sending email: {e}")
-
-    return redirect(url_for('view_scan', scan_id=scan_id))
+        return "Report not available.", 404
+    html     = generate_html_report(data['ip'], data['output'])
+    filename = f"nhc-report-{data['ip'].replace('.', '-')}.html"
+    return Response(
+        html,
+        mimetype='text/html',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
 
 
 @app.route('/history')
@@ -133,21 +129,6 @@ def history():
         reverse=True,
     )
     return render_template('history.html', scans=history_list)
-
-
-@app.route('/test-email', methods=['POST'])
-def test_email():
-    email = request.form.get('email')
-    if email:
-        try:
-            success, msg = send_email_report(email, "TEST_CONNECTION",
-                                             "This is a quick test from the Network Health Checker.")
-            flash(f"{'SUCCESS' if success else 'ERROR'}: {msg}")
-        except Exception as e:
-            flash(f"ERROR: Test crashed: {e}")
-    else:
-        flash('Please enter an email address first.')
-    return redirect(url_for('index'))
 
 
 def _run_background_scan(scan_id, ip, scan_type):
@@ -164,4 +145,4 @@ def _run_background_scan(scan_id, ip, scan_type):
 if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 5001))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=True)

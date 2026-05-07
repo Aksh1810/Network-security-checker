@@ -163,36 +163,20 @@
             <pre class="text-accent text-xs leading-relaxed p-4 overflow-x-auto overflow-y-auto max-h-[28rem] whitespace-pre-wrap break-words">{{ scan_output }}</pre>
         </details>
 
-        <!-- Email section -->
+        <!-- Download section -->
         <div class="bg-surface border-l-2 border-accent border-t border-r border-b border-border rounded-r-lg p-5">
-            <div class="flex items-start gap-3 mb-4">
-                <span class="text-accent text-base mt-0.5">✉</span>
+            <div class="flex items-center justify-between">
                 <div>
-                    <h3 class="text-primary font-bold text-sm">Email This Report</h3>
-                    <p class="text-muted text-xs mt-0.5">Receive a formatted HTML version of these results in your inbox.</p>
+                    <h3 class="text-primary font-bold text-sm">Download Report</h3>
+                    <p class="text-muted text-xs mt-0.5">
+                        Save a formatted HTML report — open it in any browser or print to PDF.
+                    </p>
                 </div>
+                <a href="{{ url_for('download_report', scan_id=scan_id) }}"
+                   class="px-4 py-2 bg-accent hover:bg-accent-dim text-base font-bold text-sm rounded transition-colors duration-150 whitespace-nowrap">
+                    ↓ Download
+                </a>
             </div>
-            <form action="{{ url_for('send_report_email', scan_id=scan_id) }}" method="POST">
-                <div class="flex gap-2">
-                    <div class="flex-1 flex items-center bg-base border border-border rounded px-3 py-2 gap-2">
-                        <span class="text-muted text-xs select-none">@</span>
-                        <input
-                            type="email"
-                            name="email"
-                            placeholder="you@example.com"
-                            required
-                            class="flex-1 bg-transparent text-primary placeholder-muted text-sm focus:outline-none"
-                        >
-                    </div>
-                    <button
-                        type="submit"
-                        class="px-4 py-2 bg-accent hover:bg-accent-dim text-base font-bold text-sm rounded transition-colors duration-150 whitespace-nowrap cursor-pointer"
-                    >
-                        Send →
-                    </button>
-                </div>
-            </form>
-            <p class="text-muted text-xs mt-3">Check your spam folder if the email doesn't arrive within a few minutes.</p>
         </div>
 
         {% endif %}{# end not is_error #}
