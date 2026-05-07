@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan History — NHC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        base: '#0d1117',
+                        surface: '#161b22',
+                        border: '#30363d',
+                        accent: '#00ff88',
+                        'accent-dim': '#00cc6a',
+                        primary: '#e6edf3',
+                        muted: '#8b949e',
+                    },
+                    fontFamily: {
+                        mono: ['"JetBrains Mono"', '"Fira Code"', 'Consolas', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+    </style>
+</head>
+<body class="bg-base text-primary font-mono min-h-screen p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+
+        <!-- Top bar -->
+        <div class="flex items-center justify-between mb-6">
+            <span class="text-xl font-bold tracking-widest">
+                <span class="text-accent">[</span>NHC<span class="text-accent">]</span>
+                <span class="text-muted text-base font-normal ml-3">/ history</span>
+            </span>
+            <a href="/" class="text-accent hover:text-accent-dim text-sm transition-colors">← New Scan</a>
+        </div>
+
+        {% if scans %}
+        <!-- Scan table -->
+        <div class="bg-surface border border-border rounded-lg overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-border bg-base flex items-center gap-2">
+                <span class="text-xs text-muted uppercase tracking-widest">All Scans</span>
+                <span class="ml-auto text-xs text-muted/60">{{ scans | length }} total · cleared on restart</span>
+            </div>
+            <table class="w-full text-xs">
+                <thead>
+                    <tr class="border-b border-border text-muted text-left">
+                        <th class="px-4 py-3 font-medium">Target</th>
+                        <th class="px-4 py-3 font-medium w-28 hidden sm:table-cell">Mode</th>
+                        <th class="px-4 py-3 font-medium w-28">Status</th>
+                        <th class="px-4 py-3 font-medium w-40 hidden md:table-cell">Started</th>
+                        <th class="px-4 py-3 font-medium w-16 text-right">Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for scan_id, data in scans %}
+                    <tr class="border-b border-border/50 hover:bg-base/50 transition-colors">
+                        <td class="px-4 py-3">
+                            <code class="text-primary">{{ data.ip }}</code>
+                        </td>
+                        <td class="px-4 py-3 hidden sm:table-cell">
+                            <span class="px-2 py-0.5 rounded-full border text-xs uppercase tracking-wider
+                                {% if data.scan_type == 'network' %}border-blue-800 text-blue-400
+                                {% elif data.scan_type == 'web' %}border-purple-800 text-purple-400
+                                {% else %}border-yellow-800 text-yellow-400{% endif %}">
+                                {{ data.scan_type }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if data.status == 'completed' %}
+                            <span class="flex items-center gap-1.5 text-accent">
+                                <span class="w-1.5 h-1.5 rounded-full bg-accent"></span>done
+                            </span>
+                            {% elif data.status == 'running' %}
+                            <span class="flex items-center gap-1.5 text-yellow-400">
+                                <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>running
+                            </span>
+                            {% else %}
+                            <span class="flex items-center gap-1.5 text-red-400">
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>error
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-muted hidden md:table-cell">
+                            {{ data.started_at | replace('T', ' ') if data.started_at else '—' }}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <a href="/scan/{{ scan_id }}"
+                               class="text-accent hover:text-accent-dim transition-colors">
+                                view →
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% else %}
+        <!-- Empty state -->
+        <div class="bg-surface border border-border rounded-lg p-12 text-center">
+            <div class="text-4xl mb-4 text-muted/30">[ ]</div>
+            <p class="text-muted text-sm">No scans yet.</p>
+            <a href="/" class="inline-block mt-4 text-accent hover:text-accent-dim text-sm transition-colors">
+                Run your first scan →
+            </a>
+        </div>
+        {% endif %}
+
+    </div>
+</body>
+</html>

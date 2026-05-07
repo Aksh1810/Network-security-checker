@@ -70,9 +70,18 @@
                 <span class="text-accent text-sm ml-2">nmap {{ ip }}<span class="cursor">_</span></span>
             </div>
 
-            <p class="text-muted text-xs leading-relaxed">
+            <p class="text-muted text-xs leading-relaxed mb-4">
                 This may take a few minutes. Do not close this tab.
             </p>
+
+            <!-- Cancel button -->
+            <button
+                id="cancel-btn"
+                onclick="cancelScan()"
+                class="px-4 py-2 border border-red-800 text-red-400 text-xs rounded hover:bg-red-900/20 transition-colors cursor-pointer"
+            >
+                ✕ Cancel Scan
+            </button>
         </div>
 
         <p class="text-center text-muted/50 text-xs mt-4 tracking-widest">
@@ -83,6 +92,7 @@
 
     <script>
         const scanId = "{{ scan_id }}";
+
         async function poll() {
             try {
                 const res  = await fetch(`/scan/${scanId}/status`);
@@ -95,6 +105,16 @@
             }
         }
         setInterval(poll, 3000);
+
+        async function cancelScan() {
+            const btn = document.getElementById('cancel-btn');
+            btn.textContent = 'Cancelling…';
+            btn.disabled = true;
+            try {
+                await fetch(`/scan/${scanId}/cancel`, { method: 'POST' });
+            } catch (_) {}
+            window.location.href = `/scan/${scanId}`;
+        }
     </script>
 </body>
 </html>

@@ -4,7 +4,7 @@ import logging
 from .passive import get_passive_info, format_passive_report
 
 
-def run_nmap_scan(ip, scan_type='network'):
+def run_nmap_scan(ip, scan_type='network', proc_store=None):
     print(f"\n[*] Starting {scan_type} scan for target: {ip}")
     print("    This process may take several minutes. Please wait...")
     logging.info(f"Starting {scan_type} scan for {ip}")
@@ -18,20 +18,27 @@ def run_nmap_scan(ip, scan_type='network'):
         command = ["nmap", "-sV", "--script=vuln", ip]
 
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=900)
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if proc_store is not None:
+            proc_store.append(proc)
 
-        if result.returncode != 0:
+        try:
+            stdout, _ = proc.communicate(timeout=900)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            msg = "Scan timed out after 15 minutes."
+            logging.error(msg)
+            return msg
+
+        if proc.returncode != 0:
             print("[!] Nmap scan failed. Falling back to Passive Discovery...")
             passive_data = get_passive_info(ip)
             return format_passive_report(ip, passive_data)
 
         logging.info(f"Scan completed for {ip}")
-        return result.stdout
+        return stdout
 
-    except subprocess.TimeoutExpired:
-        msg = "Scan timed out after 15 minutes."
-        logging.error(msg)
-        return msg
     except FileNotFoundError:
         msg = "Error: 'nmap' command not found. Please ensure nmap is installed and in your PATH."
         logging.error(msg)

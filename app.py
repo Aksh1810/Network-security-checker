@@ -1,3 +1,4 @@
+import datetime
 import ipaddress
 import re
 import threading
@@ -7,11 +8,12 @@ from flask import Flask, jsonify, redirect, render_template, request, flash, url
 
 from scanner.nmap import run_nmap_scan
 from scanner.email import send_email_report
+from scanner.reports import parse_nmap_output
 
 app = Flask(__name__)
 app.secret_key = __import__('os').urandom(24)
 
-# In-memory scan state: {scan_id: {status, ip, scan_type, output}}
+# In-memory scan state: {scan_id: {status, ip, scan_type, output, started_at, _proc_store}}
 scans = {}
 
 _HOSTNAME_RE = re.compile(
@@ -47,8 +49,14 @@ def index():
 
         scan_id = str(uuid.uuid4())
 
-        # Write initial state before spawning thread — eliminates the race condition
-        scans[scan_id] = {'status': 'running', 'ip': ip, 'scan_type': scan_type, 'output': None}
+        scans[scan_id] = {
+            'status': 'running',
+            'ip': ip,
+            'scan_type': scan_type,
+            'output': None,
+            'started_at': datetime.datetime.now().isoformat(timespec='seconds'),
+            '_proc_store': [],
+        }
 
         thread = threading.Thread(target=_run_background_scan, args=(scan_id, ip, scan_type), daemon=True)
         thread.start()
@@ -67,13 +75,17 @@ def view_scan(scan_id):
     if data['status'] == 'running':
         return render_template('loading.html', ip=data['ip'], scan_type=data['scan_type'], scan_id=scan_id)
 
+    is_error = (data['status'] == 'error')
+    parsed   = parse_nmap_output(data['output']) if not is_error and data['output'] else None
+
     return render_template(
         'result.html',
         scan_output=data['output'],
+        parsed=parsed,
         ip=data['ip'],
         scan_type=data['scan_type'],
         scan_id=scan_id,
-        is_error=(data['status'] == 'error'),
+        is_error=is_error,
     )
 
 
@@ -83,6 +95,17 @@ def scan_status(scan_id):
     if not data:
         return jsonify({'status': 'not_found'}), 404
     return jsonify({'status': data['status']})
+
+
+@app.route('/scan/<scan_id>/cancel', methods=['POST'])
+def cancel_scan(scan_id):
+    data = scans.get(scan_id)
+    if not data or data['status'] != 'running':
+        return jsonify({'ok': False, 'reason': 'not running'}), 400
+    for proc in data.get('_proc_store', []):
+        proc.kill()
+    scans[scan_id].update({'status': 'error', 'output': 'Scan cancelled by user.'})
+    return jsonify({'ok': True})
 
 
 @app.route('/scan/<scan_id>/email', methods=['POST'])
@@ -102,6 +125,16 @@ def send_report_email(scan_id):
     return redirect(url_for('view_scan', scan_id=scan_id))
 
 
+@app.route('/history')
+def history():
+    history_list = sorted(
+        scans.items(),
+        key=lambda x: x[1].get('started_at', ''),
+        reverse=True,
+    )
+    return render_template('history.html', scans=history_list)
+
+
 @app.route('/test-email', methods=['POST'])
 def test_email():
     email = request.form.get('email')
@@ -118,14 +151,17 @@ def test_email():
 
 
 def _run_background_scan(scan_id, ip, scan_type):
+    proc_store = scans[scan_id]['_proc_store']
     try:
-        output = run_nmap_scan(ip, scan_type=scan_type)
-        scans[scan_id] = {'status': 'completed', 'ip': ip, 'scan_type': scan_type, 'output': output}
+        output = run_nmap_scan(ip, scan_type=scan_type, proc_store=proc_store)
+        if scans[scan_id]['status'] == 'running':
+            scans[scan_id].update({'status': 'completed', 'output': output})
     except Exception as e:
-        scans[scan_id] = {'status': 'error', 'ip': ip, 'scan_type': scan_type, 'output': str(e)}
+        if scans[scan_id]['status'] == 'running':
+            scans[scan_id].update({'status': 'error', 'output': str(e)})
 
 
 if __name__ == '__main__':
     import os
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port)

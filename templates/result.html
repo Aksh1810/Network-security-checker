@@ -28,6 +28,9 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
         input[type="email"]:focus { outline: none; box-shadow: 0 0 0 2px #00ff88; }
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] .chevron { transform: rotate(180deg); }
     </style>
 </head>
 <body class="bg-base text-primary font-mono min-h-screen p-4 md:p-8">
@@ -68,7 +71,10 @@
                     </span>
                 </div>
             </div>
-            <a href="/" class="text-accent hover:text-accent-dim text-sm transition-colors">← New Scan</a>
+            <div class="flex items-center gap-4">
+                <a href="/history" class="text-muted hover:text-primary text-sm transition-colors">[history]</a>
+                <a href="/" class="text-accent hover:text-accent-dim text-sm transition-colors">← New Scan</a>
+            </div>
         </div>
 
         {% if is_error %}
@@ -82,17 +88,80 @@
                 </div>
             </div>
         </div>
+
         {% else %}
-        <!-- Terminal output -->
-        <div class="bg-surface border border-border rounded-lg mb-6 overflow-hidden">
-            <div class="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-base">
+        <!-- Structured results -->
+        {% if parsed %}
+
+        <!-- Status banner -->
+        {% if parsed.open_ports %}
+        <div class="flex items-center gap-3 px-4 py-3 rounded border border-red-800 bg-red-900/20 text-red-300 text-sm mb-4">
+            <span class="text-red-400 text-base">⚠</span>
+            <span>Found <strong>{{ parsed.open_ports | length }}</strong> open service{{ 's' if parsed.open_ports | length != 1 else '' }} on {{ ip }}</span>
+        </div>
+        {% else %}
+        <div class="flex items-center gap-3 px-4 py-3 rounded border border-accent/40 bg-accent/10 text-accent text-sm mb-4">
+            <span class="text-base">✓</span>
+            <span>No open ports detected on {{ ip }}</span>
+        </div>
+        {% endif %}
+
+        <!-- Open ports table -->
+        {% if parsed.open_ports %}
+        <div class="bg-surface border border-border rounded-lg mb-4 overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-border bg-base flex items-center gap-2">
+                <span class="text-xs text-muted uppercase tracking-widest">Open Ports</span>
+                <span class="ml-auto text-xs text-accent/70">{{ parsed.open_ports | length }} found</span>
+            </div>
+            <table class="w-full text-xs">
+                <thead>
+                    <tr class="border-b border-border text-muted text-left">
+                        <th class="px-4 py-2.5 font-medium w-28">Port</th>
+                        <th class="px-4 py-2.5 font-medium w-32">Service</th>
+                        <th class="px-4 py-2.5 font-medium">Version</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for port in parsed.open_ports %}
+                    <tr class="border-b border-border/50 hover:bg-base/50 transition-colors">
+                        <td class="px-4 py-2.5 text-accent font-bold">{{ port.port }}</td>
+                        <td class="px-4 py-2.5 text-primary">{{ port.service }}</td>
+                        <td class="px-4 py-2.5 text-muted">{{ port.version if port.version != 'Unknown' else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- Vulnerabilities -->
+        {% if parsed.vulnerabilities %}
+        <div class="bg-surface border border-red-800 rounded-lg mb-4 overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-red-800/60 bg-red-900/10 flex items-center gap-2">
+                <span class="text-red-400 text-xs uppercase tracking-widest">Vulnerabilities Detected</span>
+                <span class="ml-auto text-xs text-red-400/70">{{ parsed.vulnerabilities | length }} finding{{ 's' if parsed.vulnerabilities | length != 1 else '' }}</span>
+            </div>
+            <ul class="divide-y divide-border/40">
+                {% for vuln in parsed.vulnerabilities %}
+                <li class="px-4 py-2.5 text-xs text-red-300 leading-relaxed">{{ vuln }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% endif %}{# end parsed #}
+
+        <!-- Collapsible raw output -->
+        <details class="bg-surface border border-border rounded-lg mb-6 overflow-hidden group">
+            <summary class="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-base cursor-pointer select-none">
                 <span class="w-3 h-3 rounded-full bg-red-500/70"></span>
                 <span class="w-3 h-3 rounded-full bg-yellow-500/70"></span>
                 <span class="w-3 h-3 rounded-full bg-accent/70"></span>
-                <span class="ml-2 text-xs text-muted tracking-wider">SCAN OUTPUT — {{ ip }}</span>
-            </div>
+                <span class="ml-2 text-xs text-muted tracking-wider flex-1">RAW NMAP OUTPUT — {{ ip }}</span>
+                <span class="chevron text-muted text-xs transition-transform duration-150">▼</span>
+            </summary>
             <pre class="text-accent text-xs leading-relaxed p-4 overflow-x-auto overflow-y-auto max-h-[28rem] whitespace-pre-wrap break-words">{{ scan_output }}</pre>
-        </div>
+        </details>
 
         <!-- Email section -->
         <div class="bg-surface border-l-2 border-accent border-t border-r border-b border-border rounded-r-lg p-5">
@@ -125,7 +194,8 @@
             </form>
             <p class="text-muted text-xs mt-3">Check your spam folder if the email doesn't arrive within a few minutes.</p>
         </div>
-        {% endif %}
+
+        {% endif %}{# end not is_error #}
 
     </div>
 </body>
