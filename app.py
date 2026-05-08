@@ -1,5 +1,6 @@
 import datetime
 import ipaddress
+import os
 import re
 import shutil
 import threading
@@ -16,7 +17,8 @@ app.secret_key = __import__('os').urandom(24)
 # In-memory scan state: {scan_id: {status, ip, scan_type, output, started_at, _proc_store}}
 scans = {}
 
-NMAP_AVAILABLE = bool(shutil.which('nmap'))
+ON_VERCEL     = bool(os.environ.get('VERCEL'))
+NMAP_AVAILABLE = not ON_VERCEL and bool(shutil.which('nmap'))
 
 _HOSTNAME_RE = re.compile(
     r'^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$'
