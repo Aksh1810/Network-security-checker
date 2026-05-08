@@ -35,14 +35,11 @@ _WEB_PORTS   = [80, 443, 8080, 8443, 8000, 8888, 3000]
 _FAST_PORTS  = _TOP_200[:100]
 
 
-def _check_port(ip, port, timeout=0.5):
+def _check_port(ip, port, timeout=1.0):
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(timeout)
-        result = s.connect_ex((ip, port))
-        s.close()
-        return port if result == 0 else None
-    except Exception:
+        socket.create_connection((ip, port), timeout=timeout).close()
+        return port
+    except OSError:
         return None
 
 
@@ -57,7 +54,7 @@ def run_socket_scan(ip, scan_type='network'):
     ports = list(dict.fromkeys(ports))  # deduplicate, preserve order
 
     open_ports = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=100) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=150) as ex:
         futures = {ex.submit(_check_port, ip, p): p for p in ports}
         for fut in concurrent.futures.as_completed(futures):
             result = fut.result()
