@@ -98,16 +98,29 @@
                     </div>
                     {% if user_ip %}
                     <div class="mt-2 flex items-center gap-2 text-xs text-muted">
-                        <span>Detected:</span>
+                        <span>Your public IP:</span>
                         <code class="text-accent/80">{{ user_ip }}</code>
                         <button
                             type="button"
                             onclick="document.getElementById('ip').value = '{{ user_ip }}'"
                             class="text-accent hover:text-accent-dim underline underline-offset-2 transition-colors"
                         >use this</button>
+                        <span
+                            class="text-muted/60 cursor-help"
+                            title="LAN IPs (192.168.x.x, 10.x.x.x) cannot be detected by a remote server — only your public IP is visible from outside your network."
+                        >ⓘ</span>
                     </div>
                     {% endif %}
                 </div>
+
+                {% if not nmap_available %}
+                <div class="mb-5 px-3 py-2.5 rounded border border-border/60 bg-base/50 text-xs text-muted leading-relaxed">
+                    <span class="text-accent">ⓘ</span>
+                    This deployment scans <strong class="text-primary">public-internet hosts only</strong>.
+                    LAN addresses and residential IPs behind NAT will show no open ports — that is correct, not a bug.
+                    For deep nmap scans of a home network, run NHC locally.
+                </div>
+                {% endif %}
 
                 <!-- Scan type -->
                 <div class="mb-6">

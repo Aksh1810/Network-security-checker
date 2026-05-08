@@ -75,8 +75,9 @@ def index():
 
         # Vercel / no-nmap path: run synchronously, render result inline
         from scanner.socket_scanner import run_socket_scan
+        ports_scanned = 0
         try:
-            output   = run_socket_scan(ip, scan_type)
+            output, ports_scanned = run_socket_scan(ip, scan_type)
             is_error = False
         except Exception as e:
             output   = str(e)
@@ -90,9 +91,10 @@ def index():
             scan_type=scan_type,
             scan_id=scan_id,
             is_error=is_error,
+            ports_scanned=ports_scanned,
         )
 
-    return render_template('index.html', user_ip=user_ip)
+    return render_template('index.html', user_ip=user_ip, nmap_available=NMAP_AVAILABLE)
 
 
 @app.route('/scan/<scan_id>')
@@ -205,12 +207,7 @@ def debug_headers():
 
 @app.route('/history')
 def history():
-    history_list = sorted(
-        scans.items(),
-        key=lambda x: x[1].get('started_at', ''),
-        reverse=True,
-    )
-    return render_template('history.html', scans=history_list)
+    return render_template('history.html')
 
 
 def _run_background_scan(scan_id, ip, scan_type):

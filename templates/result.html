@@ -101,9 +101,18 @@
             <span>Found <strong>{{ parsed.open_ports | length }}</strong> open service{{ 's' if parsed.open_ports | length != 1 else '' }} on {{ ip }}</span>
         </div>
         {% else %}
-        <div class="flex items-center gap-3 px-4 py-3 rounded border border-accent/40 bg-accent/10 text-accent text-sm mb-4">
-            <span class="text-base">✓</span>
-            <span>No open ports detected on {{ ip }}</span>
+        <div class="px-4 py-3 rounded border border-accent/40 bg-accent/10 text-accent text-sm mb-4">
+            <div class="flex items-center gap-3">
+                <span class="text-base">✓</span>
+                <span>No open ports detected on {{ ip }}</span>
+            </div>
+            {% if ports_scanned %}
+            <p class="text-muted text-xs mt-2 leading-relaxed pl-7">
+                Mode <strong class="text-primary">{{ scan_type }}</strong> · scanned <strong class="text-primary">{{ ports_scanned }}</strong> ports.
+                A "0 open ports" result is expected for residential IPs and LAN addresses behind NAT —
+                they are firewalled from the public internet. Try <code class="text-accent/80">scanme.nmap.org</code> to confirm the scanner is working.
+            </p>
+            {% endif %}
         </div>
         {% endif %}
 
@@ -187,5 +196,25 @@
         {% endif %}{# end not is_error #}
 
     </div>
+
+    <script>
+    (function() {
+        try {
+            const entry = {
+                scan_id: {{ scan_id | tojson }},
+                ip: {{ ip | tojson }},
+                scan_type: {{ scan_type | tojson }},
+                status: {{ ('error' if is_error else 'completed') | tojson }},
+                started_at: new Date().toISOString(),
+                output: {{ scan_output | tojson }}
+            };
+            const KEY = 'nhc_scans';
+            const list = JSON.parse(localStorage.getItem(KEY) || '[]');
+            const filtered = list.filter(s => s.scan_id !== entry.scan_id);
+            filtered.unshift(entry);
+            localStorage.setItem(KEY, JSON.stringify(filtered.slice(0, 50)));
+        } catch (e) { /* localStorage unavailable / quota / private mode — silently skip */ }
+    })();
+    </script>
 </body>
 </html>

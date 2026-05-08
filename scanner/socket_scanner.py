@@ -76,4 +76,4 @@ def run_socket_scan(ip, scan_type='network'):
         "",
         f"NHC socket scan completed. {len(ports)} ports scanned.",
     ]
-    return "\n".join(lines)
+    return "\n".join(lines), len(ports)

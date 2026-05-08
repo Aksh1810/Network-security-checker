@@ -40,15 +40,20 @@
                 <span class="text-accent">[</span>NHC<span class="text-accent">]</span>
                 <span class="text-muted text-base font-normal ml-3">/ history</span>
             </span>
-            <a href="/" class="text-accent hover:text-accent-dim text-sm transition-colors">← New Scan</a>
+            <div class="flex items-center gap-4">
+                <button
+                    id="clear-btn"
+                    class="hidden text-muted hover:text-red-400 text-xs transition-colors"
+                >clear all</button>
+                <a href="/" class="text-accent hover:text-accent-dim text-sm transition-colors">← New Scan</a>
+            </div>
         </div>
 
-        {% if scans %}
-        <!-- Scan table -->
-        <div class="bg-surface border border-border rounded-lg overflow-hidden">
+        <!-- Populated state -->
+        <div id="history-table" class="hidden bg-surface border border-border rounded-lg overflow-hidden">
             <div class="px-4 py-2.5 border-b border-border bg-base flex items-center gap-2">
                 <span class="text-xs text-muted uppercase tracking-widest">All Scans</span>
-                <span class="ml-auto text-xs text-muted/60">{{ scans | length }} total · cleared on restart</span>
+                <span id="history-count" class="ml-auto text-xs text-muted/60"></span>
             </div>
             <table class="w-full text-xs">
                 <thead>
@@ -60,61 +65,138 @@
                         <th class="px-4 py-3 font-medium w-16 text-right">Link</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for scan_id, data in scans %}
-                    <tr class="border-b border-border/50 hover:bg-base/50 transition-colors">
-                        <td class="px-4 py-3">
-                            <code class="text-primary">{{ data.ip }}</code>
-                        </td>
-                        <td class="px-4 py-3 hidden sm:table-cell">
-                            <span class="px-2 py-0.5 rounded-full border text-xs uppercase tracking-wider
-                                {% if data.scan_type == 'network' %}border-blue-800 text-blue-400
-                                {% elif data.scan_type == 'web' %}border-purple-800 text-purple-400
-                                {% else %}border-yellow-800 text-yellow-400{% endif %}">
-                                {{ data.scan_type }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3">
-                            {% if data.status == 'completed' %}
-                            <span class="flex items-center gap-1.5 text-accent">
-                                <span class="w-1.5 h-1.5 rounded-full bg-accent"></span>done
-                            </span>
-                            {% elif data.status == 'running' %}
-                            <span class="flex items-center gap-1.5 text-yellow-400">
-                                <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>running
-                            </span>
-                            {% else %}
-                            <span class="flex items-center gap-1.5 text-red-400">
-                                <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>error
-                            </span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3 text-muted hidden md:table-cell">
-                            {{ data.started_at | replace('T', ' ') if data.started_at else '—' }}
-                        </td>
-                        <td class="px-4 py-3 text-right">
-                            <a href="/scan/{{ scan_id }}"
-                               class="text-accent hover:text-accent-dim transition-colors">
-                                view →
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+                <tbody id="history-rows"></tbody>
             </table>
         </div>
 
-        {% else %}
         <!-- Empty state -->
-        <div class="bg-surface border border-border rounded-lg p-12 text-center">
+        <div id="history-empty" class="hidden bg-surface border border-border rounded-lg p-12 text-center">
             <div class="text-4xl mb-4 text-muted/30">[ ]</div>
             <p class="text-muted text-sm">No scans yet.</p>
             <a href="/" class="inline-block mt-4 text-accent hover:text-accent-dim text-sm transition-colors">
                 Run your first scan →
             </a>
         </div>
-        {% endif %}
 
     </div>
+
+    <!-- Modal for viewing a cached scan output -->
+    <div id="modal" class="hidden fixed inset-0 bg-base/90 z-50 p-4 md:p-8 overflow-y-auto">
+        <div class="max-w-4xl mx-auto bg-surface border border-border rounded-lg overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-border bg-base flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-red-500/70"></span>
+                <span class="w-3 h-3 rounded-full bg-yellow-500/70"></span>
+                <span class="w-3 h-3 rounded-full bg-accent/70"></span>
+                <span id="modal-title" class="ml-2 text-xs text-muted tracking-wider flex-1"></span>
+                <button
+                    id="modal-close"
+                    class="text-muted hover:text-primary text-sm transition-colors"
+                >✕ close</button>
+            </div>
+            <pre id="modal-output" class="text-accent text-xs leading-relaxed p-4 overflow-x-auto whitespace-pre-wrap break-words max-h-[80vh]"></pre>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        const KEY = 'nhc_scans';
+        const tableEl = document.getElementById('history-table');
+        const emptyEl = document.getElementById('history-empty');
+        const rowsEl  = document.getElementById('history-rows');
+        const countEl = document.getElementById('history-count');
+        const clearBtn = document.getElementById('clear-btn');
+        const modal     = document.getElementById('modal');
+        const modalTitle  = document.getElementById('modal-title');
+        const modalOutput = document.getElementById('modal-output');
+        const modalClose  = document.getElementById('modal-close');
+
+        function loadList() {
+            try { return JSON.parse(localStorage.getItem(KEY) || '[]'); }
+            catch (e) { return []; }
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[c]));
+        }
+
+        function modePillClass(mode) {
+            if (mode === 'network') return 'border-blue-800 text-blue-400';
+            if (mode === 'web')     return 'border-purple-800 text-purple-400';
+            return 'border-yellow-800 text-yellow-400';
+        }
+
+        function statusCell(status) {
+            if (status === 'completed') {
+                return '<span class="flex items-center gap-1.5 text-accent"><span class="w-1.5 h-1.5 rounded-full bg-accent"></span>done</span>';
+            }
+            if (status === 'running') {
+                return '<span class="flex items-center gap-1.5 text-yellow-400"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>running</span>';
+            }
+            return '<span class="flex items-center gap-1.5 text-red-400"><span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>error</span>';
+        }
+
+        function render() {
+            const list = loadList();
+            if (list.length === 0) {
+                tableEl.classList.add('hidden');
+                emptyEl.classList.remove('hidden');
+                clearBtn.classList.add('hidden');
+                return;
+            }
+            tableEl.classList.remove('hidden');
+            emptyEl.classList.add('hidden');
+            clearBtn.classList.remove('hidden');
+            countEl.textContent = `${list.length} total · stored in your browser`;
+
+            rowsEl.innerHTML = list.map((s, i) => `
+                <tr class="border-b border-border/50 hover:bg-base/50 transition-colors" data-idx="${i}">
+                    <td class="px-4 py-3"><code class="text-primary">${escapeHtml(s.ip)}</code></td>
+                    <td class="px-4 py-3 hidden sm:table-cell">
+                        <span class="px-2 py-0.5 rounded-full border text-xs uppercase tracking-wider ${modePillClass(s.scan_type)}">
+                            ${escapeHtml(s.scan_type || '—')}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">${statusCell(s.status)}</td>
+                    <td class="px-4 py-3 text-muted hidden md:table-cell">
+                        ${s.started_at ? escapeHtml(s.started_at.replace('T', ' ').replace(/\.\d+Z?$/, '')) : '—'}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <button class="view-btn text-accent hover:text-accent-dim transition-colors" data-idx="${i}">view →</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openModal(idx) {
+            const list = loadList();
+            const s = list[idx];
+            if (!s) return;
+            modalTitle.textContent = `${s.ip} — ${s.scan_type || ''}`.toUpperCase();
+            modalOutput.textContent = s.output || '(no output captured)';
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() { modal.classList.add('hidden'); }
+
+        rowsEl.addEventListener('click', e => {
+            const btn = e.target.closest('.view-btn');
+            if (btn) openModal(parseInt(btn.dataset.idx, 10));
+        });
+        modalClose.addEventListener('click', closeModal);
+        modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+        clearBtn.addEventListener('click', () => {
+            if (confirm('Clear all scan history? This only affects this browser.')) {
+                localStorage.removeItem(KEY);
+                render();
+            }
+        });
+
+        render();
+    })();
+    </script>
 </body>
 </html>
