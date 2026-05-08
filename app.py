@@ -35,7 +35,12 @@ def is_valid_target(target):
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    user_ip = (
+        request.headers.get('X-Real-IP')
+        or request.headers.get('X-Vercel-Forwarded-For')
+        or request.headers.get('X-Forwarded-For')
+        or request.remote_addr
+    )
     if user_ip and ',' in user_ip:
         user_ip = user_ip.split(',')[0].strip()
 
@@ -158,6 +163,44 @@ def download_report_post():
         mimetype='text/html',
         headers={'Content-Disposition': f'attachment; filename="{fname}"'},
     )
+
+
+@app.route('/_debug/connect/<host>/<int:port>')
+def debug_connect(host, port):
+    """Temporary: confirms whether the Vercel function can open a TCP socket.
+    Remove once the scanner is verified end-to-end."""
+    import socket
+    import time
+    t0 = time.time()
+    try:
+        s = socket.create_connection((host, port), timeout=3.0)
+        s.close()
+        return jsonify({
+            'ok': True, 'host': host, 'port': port,
+            'elapsed_ms': int((time.time() - t0) * 1000),
+        })
+    except Exception as e:
+        return jsonify({
+            'ok': False, 'host': host, 'port': port,
+            'error_type': type(e).__name__,
+            'error': str(e),
+            'elapsed_ms': int((time.time() - t0) * 1000),
+        })
+
+
+@app.route('/_debug/headers')
+def debug_headers():
+    """Temporary: shows what proxy headers Vercel passes to the function,
+    so we can verify which header carries the real client IP."""
+    interesting = [
+        'X-Real-IP', 'X-Forwarded-For', 'X-Vercel-Forwarded-For',
+        'X-Vercel-IP-Country', 'X-Vercel-IP-City', 'X-Vercel-IP-Region',
+        'CF-Connecting-IP', 'True-Client-IP',
+    ]
+    return jsonify({
+        'remote_addr': request.remote_addr,
+        'headers': {h: request.headers.get(h) for h in interesting if request.headers.get(h)},
+    })
 
 
 @app.route('/history')
