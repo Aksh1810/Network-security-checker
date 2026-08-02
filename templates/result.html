@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scan Results — NHC</title>
-    <script defer src="/_vercel/insights/script.js"></script>
+    {% if on_vercel %}<script defer src="/_vercel/insights/script.js"></script>{% endif %}
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -167,7 +167,7 @@
                 <span class="w-3 h-3 rounded-full bg-red-500/70"></span>
                 <span class="w-3 h-3 rounded-full bg-yellow-500/70"></span>
                 <span class="w-3 h-3 rounded-full bg-accent/70"></span>
-                <span class="ml-2 text-xs text-muted tracking-wider flex-1">RAW NMAP OUTPUT — {{ ip }}</span>
+                <span class="ml-2 text-xs text-muted tracking-wider flex-1">RAW {{ 'SOCKET' if engine == 'socket' else 'NMAP' }} OUTPUT — {{ ip }}</span>
                 <span class="chevron text-muted text-xs transition-transform duration-150">▼</span>
             </summary>
             <pre class="text-accent text-xs leading-relaxed p-4 overflow-x-auto overflow-y-auto max-h-[28rem] whitespace-pre-wrap break-words">{{ scan_output }}</pre>

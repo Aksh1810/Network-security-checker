@@ -1,4 +1,5 @@
 import datetime
+import html
 
 
 def parse_nmap_output(nmap_output):
@@ -92,9 +93,11 @@ Next Steps:
 
 
 def generate_html_report(ip, nmap_output):
+    # Everything interpolated below is untrusted: the service banner comes from the
+    # scanned host, and `ip` arrives from a form POST. Escape it all.
     parsed = parse_nmap_output(nmap_output)
-    vulnerabilities = parsed['vulnerabilities']
     scan_date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    safe_ip = html.escape(str(ip))
 
     open_ports = []
     for item in parsed['open_ports']:
@@ -107,7 +110,11 @@ def generate_html_report(ip, nmap_output):
         elif "smtp" in svc:    desc = "Email Server"
         elif "domain" in svc:  desc = "DNS Server"
         else:                  desc = "Unknown Service"
-        open_ports.append({'port': item['port'], 'service': item['service'], 'desc': desc})
+        open_ports.append({
+            'port': html.escape(item['port']),
+            'service': html.escape(item['service']),
+            'desc': desc,
+        })
 
     if not open_ports:
         status_color   = "#28a745"
@@ -151,7 +158,7 @@ def generate_html_report(ip, nmap_output):
     <p style="margin:5px 0 0 0;">{status_message}</p>
   </div>
   <div class="content">
-    <p><strong>Target IP:</strong> {ip}</p>
+    <p><strong>Target IP:</strong> {safe_ip}</p>
     <p><strong>Scan Date:</strong> {scan_date}</p>
     <h3>\U0001f50d What We Found</h3>
     <table class="table-box">

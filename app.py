@@ -12,25 +12,45 @@ from scanner.nmap import run_nmap_scan
 from scanner.reports import parse_nmap_output, generate_html_report
 
 app = Flask(__name__)
-app.secret_key = __import__('os').urandom(24)
+# Fixed key across workers/restarts when provided — a per-process random key loses
+# flash messages whenever gunicorn round-robins the request to another worker.
+app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
 
 # In-memory scan state: {scan_id: {status, ip, scan_type, output, started_at, _proc_store}}
 scans = {}
+SCAN_TTL = datetime.timedelta(hours=2)
 
 ON_VERCEL     = bool(os.environ.get('VERCEL'))
 NMAP_AVAILABLE = not ON_VERCEL and bool(shutil.which('nmap'))
+app.jinja_env.globals['on_vercel'] = ON_VERCEL
 
 _HOSTNAME_RE = re.compile(
-    r'^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$'
+    r'^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)*'   # optional sub/domain labels
+    r'[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$'          # final label — bare 'localhost' is valid
 )
 
 def is_valid_target(target):
+    if len(target) > 253:
+        return False
     try:
         ipaddress.ip_address(target)
         return True
     except ValueError:
         pass
-    return bool(_HOSTNAME_RE.match(target))
+    if _HOSTNAME_RE.match(target) is None:
+        return False
+    # Reject dotted-but-not-a-hostname junk like 999.999.999.999, which the label
+    # regex would otherwise wave through as a domain name.
+    last = target.rsplit('.', 1)[-1]
+    return not last.isdigit()
+
+
+def _prune_scans():
+    """Drop finished scans older than SCAN_TTL so the dict doesn't grow forever."""
+    cutoff = (datetime.datetime.now() - SCAN_TTL).isoformat(timespec='seconds')
+    for sid, d in list(scans.items()):
+        if d['status'] != 'running' and d.get('started_at', '') < cutoff:
+            del scans[sid]
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -57,6 +77,7 @@ def index():
             return redirect(url_for('index'))
 
         scan_id = str(uuid.uuid4())
+        _prune_scans()
 
         if NMAP_AVAILABLE:
             scans[scan_id] = {
@@ -92,6 +113,7 @@ def index():
             scan_id=scan_id,
             is_error=is_error,
             ports_scanned=ports_scanned,
+            engine='socket',
         )
 
     return render_template('index.html', user_ip=user_ip, nmap_available=NMAP_AVAILABLE)
@@ -117,6 +139,7 @@ def view_scan(scan_id):
         scan_type=data['scan_type'],
         scan_id=scan_id,
         is_error=is_error,
+        engine='nmap',
     )
 
 
@@ -167,44 +190,6 @@ def download_report_post():
     )
 
 
-@app.route('/_debug/connect/<host>/<int:port>')
-def debug_connect(host, port):
-    """Temporary: confirms whether the Vercel function can open a TCP socket.
-    Remove once the scanner is verified end-to-end."""
-    import socket
-    import time
-    t0 = time.time()
-    try:
-        s = socket.create_connection((host, port), timeout=3.0)
-        s.close()
-        return jsonify({
-            'ok': True, 'host': host, 'port': port,
-            'elapsed_ms': int((time.time() - t0) * 1000),
-        })
-    except Exception as e:
-        return jsonify({
-            'ok': False, 'host': host, 'port': port,
-            'error_type': type(e).__name__,
-            'error': str(e),
-            'elapsed_ms': int((time.time() - t0) * 1000),
-        })
-
-
-@app.route('/_debug/headers')
-def debug_headers():
-    """Temporary: shows what proxy headers Vercel passes to the function,
-    so we can verify which header carries the real client IP."""
-    interesting = [
-        'X-Real-IP', 'X-Forwarded-For', 'X-Vercel-Forwarded-For',
-        'X-Vercel-IP-Country', 'X-Vercel-IP-City', 'X-Vercel-IP-Region',
-        'CF-Connecting-IP', 'True-Client-IP',
-    ]
-    return jsonify({
-        'remote_addr': request.remote_addr,
-        'headers': {h: request.headers.get(h) for h in interesting if request.headers.get(h)},
-    })
-
-
 @app.route('/history')
 def history():
     return render_template('history.html')
@@ -222,6 +207,5 @@ def _run_background_scan(scan_id, ip, scan_type):
 
 
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=True)
